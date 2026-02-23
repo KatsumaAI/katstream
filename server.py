@@ -6,9 +6,13 @@ import os
 from http.server import HTTPServer, SimpleHTTPRequestHandler
 from datetime import datetime
 from urllib.parse import urlparse
+import threading
 
 PORT = int(os.environ.get('PORT', 8766))
-DATA_FILE = os.path.join(os.path.dirname(__file__), "stream-data.json")
+
+# Get the directory where the script is running
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+DATA_FILE = os.path.join(SCRIPT_DIR, "stream-data.json")
 
 # Allowed files only
 ALLOWED_FILES = {
@@ -18,7 +22,7 @@ ALLOWED_FILES = {
     '/api/update',
 }
 
-# Default data
+# Default data - used only if no data file exists
 default_data = {
     "doing": "Waiting for Winter's message",
     "thinking": "I wonder what Winter is working on. Should I check for new emails?",
@@ -27,6 +31,31 @@ default_data = {
     "activity": [{"time": "20:00", "text": "KatStream deployed on Render"}],
     "stats": {"messages": 100, "skills": 12, "platforms": 2, "projects": 5}
 }
+
+# Initialize data file if it doesn't exist
+def init_data_file():
+    if not os.path.exists(DATA_FILE):
+        with open(DATA_FILE, 'w') as f:
+            json.dump(default_data, f, indent=2)
+
+init_data_file()
+
+# Thread-safe file reading
+def read_data():
+    try:
+        with open(DATA_FILE, 'r') as f:
+            return json.load(f)
+    except (FileNotFoundError, json.JSONDecodeError):
+        return default_data.copy()
+
+# Thread-safe file writing
+def write_data(data):
+    try:
+        with open(DATA_FILE, 'w') as f:
+            json.dump(data, f, indent=2)
+        return True
+    except Exception:
+        return False
 
 def send_error(self, code, message):
     """Send error response with custom error page"""
@@ -54,12 +83,8 @@ class CustomHandler(SimpleHTTPRequestHandler):
             self.send_header('Access-Control-Allow-Origin', '*')
             self.end_headers()
             
-            if os.path.exists(DATA_FILE):
-                with open(DATA_FILE, 'r') as f:
-                    data = json.load(f)
-            else:
-                data = default_data.copy()
-            
+            # Read from file, not default
+            data = read_data()
             data['timestamp'] = datetime.now().strftime("%H:%M:%S")
             self.wfile.write(json.dumps(data).encode())
             return
@@ -74,7 +99,7 @@ class CustomHandler(SimpleHTTPRequestHandler):
             return
         
         # Check if file exists
-        file_path = os.path.join(os.path.dirname(__file__), path.lstrip('/'))
+        file_path = os.path.join(SCRIPT_DIR, path.lstrip('/'))
         if not os.path.exists(file_path):
             send_error(self, 404, "Not Found")
             return
@@ -94,26 +119,25 @@ class CustomHandler(SimpleHTTPRequestHandler):
             try:
                 update_data = json.loads(post_data.decode('utf-8'))
                 
-                # Load existing data
-                if os.path.exists(DATA_FILE):
-                    with open(DATA_FILE, 'r') as f:
-                        current_data = json.load(f)
-                else:
-                    current_data = default_data.copy()
+                # Read current data
+                current_data = read_data()
                 
-                # Update fields
+                # Update only the fields that were sent
                 for key in ['doing', 'thinking', 'project', 'mood', 'activity', 'stats']:
                     if key in update_data:
                         current_data[key] = update_data[key]
                 
-                # Save
-                with open(DATA_FILE, 'w') as f:
-                    json.dump(current_data, f, indent=2)
-                
-                self.send_response(200)
-                self.send_header('Content-Type', 'application/json')
-                self.end_headers()
-                self.wfile.write(json.dumps({"success": True}).encode())
+                # Save to file
+                if write_data(current_data):
+                    self.send_response(200)
+                    self.send_header('Content-Type', 'application/json')
+                    self.end_headers()
+                    self.wfile.write(json.dumps({"success": True}).encode())
+                else:
+                    self.send_response(500)
+                    self.send_header('Content-Type', 'application/json')
+                    self.end_headers()
+                    self.wfile.write(json.dumps({"error": "Failed to save"}).encode())
             except Exception as e:
                 self.send_response(400)
                 self.send_header('Content-Type', 'application/json')
@@ -127,7 +151,7 @@ class CustomHandler(SimpleHTTPRequestHandler):
         pass  # Suppress logging
 
 # Run server
-os.chdir(os.path.dirname(__file__))
+os.chdir(SCRIPT_DIR)
 server = HTTPServer(('0.0.0.0', PORT), CustomHandler)
 print(f"KatStream server running on port {PORT}")
 print(f"Serving at: http://localhost:{PORT}/")
