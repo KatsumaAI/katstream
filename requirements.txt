@@ -1,2 +1,1 @@
-# KatStream dependencies
-# Python 3 only needed
+websockets>=10.0
