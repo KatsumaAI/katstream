@@ -22,21 +22,21 @@ ALLOWED_FILES = {
     '/api/update',
 }
 
-# Default data - used only if no data file exists
-default_data = {
-    "doing": "Waiting for Winter's message",
-    "thinking": "I wonder what Winter is working on. Should I check for new emails?",
-    "project": {"title": "KatStream", "description": "Live AI Agent Dashboard", "progress": 100},
-    "mood": {"mood": 0.7, "focus": 0.8, "energy": 0.6},
-    "activity": [{"time": "20:00", "text": "KatStream deployed on Render"}],
-    "stats": {"messages": 100, "skills": 12, "platforms": 2, "projects": 5}
+# Initial data
+initial_data = {
+    "doing": "Initializing KatStream",
+    "thinking": "Waiting for first update...",
+    "project": {"title": "KatStream", "description": "Live AI Agent Dashboard", "progress": 0},
+    "mood": {"mood": 0.5, "focus": 0.5, "energy": 0.5},
+    "activity": [],
+    "stats": {"messages": 0, "skills": 12, "platforms": 2, "projects": 1}
 }
 
 # Initialize data file if it doesn't exist
 def init_data_file():
     if not os.path.exists(DATA_FILE):
         with open(DATA_FILE, 'w') as f:
-            json.dump(default_data, f, indent=2)
+            json.dump(initial_data, f, indent=2)
 
 init_data_file()
 
@@ -46,7 +46,7 @@ def read_data():
         with open(DATA_FILE, 'r') as f:
             return json.load(f)
     except (FileNotFoundError, json.JSONDecodeError):
-        return default_data.copy()
+        return initial_data.copy()
 
 # Thread-safe file writing
 def write_data(data):
@@ -56,6 +56,16 @@ def write_data(data):
         return True
     except Exception:
         return False
+
+# Deep merge function - updates nested dicts instead of replacing
+def deep_merge(base, updates):
+    """Merge updates into base dict recursively"""
+    for key, value in updates.items():
+        if key in base and isinstance(base[key], dict) and isinstance(value, dict):
+            base[key] = deep_merge(base[key], value)
+        else:
+            base[key] = value
+    return base
 
 def send_error(self, code, message):
     """Send error response with custom error page"""
@@ -83,7 +93,7 @@ class CustomHandler(SimpleHTTPRequestHandler):
             self.send_header('Access-Control-Allow-Origin', '*')
             self.end_headers()
             
-            # Read from file, not default
+            # Read from file
             data = read_data()
             data['timestamp'] = datetime.now().strftime("%H:%M:%S")
             self.wfile.write(json.dumps(data).encode())
@@ -122,17 +132,21 @@ class CustomHandler(SimpleHTTPRequestHandler):
                 # Read current data
                 current_data = read_data()
                 
-                # Update only the fields that were sent
-                for key in ['doing', 'thinking', 'project', 'mood', 'activity', 'stats']:
-                    if key in update_data:
-                        current_data[key] = update_data[key]
+                # Merge updates (doesn't replace everything)
+                merged_data = deep_merge(current_data, update_data)
                 
-                # Save to file
-                if write_data(current_data):
+                # Add timestamp to activity if provided
+                if 'activity' in update_data and update_data['activity']:
+                    # Add new activity to beginning of list
+                    if isinstance(merged_data['activity'], list):
+                        merged_data['activity'] = update_data['activity'] + merged_data['activity'][:9]  # Keep last 10
+                
+                # Save merged data
+                if write_data(merged_data):
                     self.send_response(200)
                     self.send_header('Content-Type', 'application/json')
                     self.end_headers()
-                    self.wfile.write(json.dumps({"success": True}).encode())
+                    self.wfile.write(json.dumps({"success": True, "data": merged_data}).encode())
                 else:
                     self.send_response(500)
                     self.send_header('Content-Type', 'application/json')
