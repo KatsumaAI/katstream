@@ -1,1 +1,1 @@
-websockets>=10.0
+# KatStream - No external dependencies, uses only Python stdlib
