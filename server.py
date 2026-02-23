@@ -4,10 +4,11 @@
 import json
 import os
 from http.server import HTTPServer, SimpleHTTPRequestHandler
+import os
 from datetime import datetime
 
 PORT = 8766
-DATA_FILE = "/Users/hjrjohnson/.katsuma/stream-data.json"
+DATA_FILE = os.path.join(os.path.dirname(__file__), "stream-data.json")
 
 # Default data
 default_data = {
