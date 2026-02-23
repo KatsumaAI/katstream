@@ -11,6 +11,9 @@ import threading
 PORT = int(os.environ.get('PORT', 8766))
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 
+# Auth - set via KATSTREAM_API_KEY env var
+API_KEY = os.environ.get('KATSTREAM_API_KEY', 'katstream-internal-change-me')
+
 # In-memory data store
 current_data = {
     "doing": "Waiting for updates...",
@@ -25,6 +28,11 @@ current_data = {
 data_lock = threading.Lock()
 
 ALLOWED_FILES = {'/katstream.html', '/stream-data.json', '/api/status', '/api/update'}
+
+def check_auth(headers):
+    """Check if request has valid API key"""
+    auth_header = headers.get('Authorization', '')
+    return auth_header == f'Bearer {API_KEY}'
 
 def send_error(self, code):
     self.send_response(code)
@@ -72,6 +80,14 @@ class CustomHandler(SimpleHTTPRequestHandler):
         
         # Update endpoint
         if parsed.path == '/api/update':
+            # Check auth
+            if not check_auth(self.headers):
+                self.send_response(401)
+                self.send_header('Content-Type', 'application/json')
+                self.end_headers()
+                self.wfile.write(json.dumps({"error": "Unauthorized"}).encode())
+                return
+            
             content_length = int(self.headers.get('Content-Length', 0))
             if content_length == 0:
                 self.send_response(400)
