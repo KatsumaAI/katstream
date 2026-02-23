@@ -26,6 +26,31 @@
             --gradient: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #d946ef 100%);
         }
         
+        [data-theme="light"] {
+            --bg-primary: #f8fafc;
+            --bg-secondary: #ffffff;
+            --bg-tertiary: #f1f5f9;
+            --bg-elevated: #e2e8f0;
+            --accent: #6366f1;
+            --accent-subtle: rgba(99, 102, 241, 0.1);
+            --text-primary: #0f172a;
+            --text-secondary: #475569;
+            --text-tertiary: #94a3b8;
+            --border: #e2e8f0;
+            --success: #10b981;
+            --success-muted: rgba(16, 185, 129, 0.1);
+            --live: #ef4444;
+            --gradient: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #d946ef 100%);
+        }
+        
+        [data-theme="light"] body::before {
+            background: 
+                radial-gradient(ellipse 100% 80% at 20% 0%, rgba(99, 102, 241, 0.08) 0%, transparent 50%),
+                radial-gradient(ellipse 80% 60% at 80% 100%, rgba(217, 70, 239, 0.05) 0%, transparent 40%),
+                repeating-linear-gradient(0deg, transparent, transparent 50px, rgba(0,0,0,0.02) 50px, rgba(0,0,0,0.02) 51px),
+                repeating-linear-gradient(90deg, transparent, transparent 50px, rgba(0,0,0,0.02) 50px, rgba(0,0,0,0.02) 51px);
+        }
+        
         *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
         html { font-size: 16px; -webkit-font-smoothing: antialiased; }
         
@@ -304,6 +329,29 @@
         .platform-online { color: #10b981 !important; }
         .platform-offline { color: #ef4444 !important; }
         .platform-locked { color: #f59e0b !important; }
+        
+        .theme-toggle {
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 8px 12px;
+            cursor: pointer;
+            color: var(--text-primary);
+            font-size: 1rem;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .theme-toggle:hover {
+            background: var(--bg-elevated);
+            border-color: var(--accent);
+        }
+        
+        [data-theme="light"] .banner::after {
+            background: linear-gradient(to top, var(--bg-primary), transparent);
+        }
     </style>
 </head>
 <body>
@@ -336,7 +384,13 @@
                 <div class="status-dot"></div>
                 <span class="status-text">Live</span>
             </div>
-            <div class="timestamp" id="timestamp">--:--:--</div>
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <button class="theme-toggle" onclick="toggleTheme()" id="theme-btn">
+                    <i class="fas fa-moon" id="theme-icon"></i>
+                    <span id="theme-text">Dark</span>
+                </button>
+                <div class="timestamp" id="timestamp">--:--:--</div>
+            </div>
         </header>
         
         <div class="layout">
@@ -536,6 +590,35 @@
             });
         }
         
+        // Theme toggle
+        function toggleTheme() {
+            const html = document.documentElement;
+            const current = html.getAttribute('data-theme');
+            const newTheme = current === 'light' ? 'dark' : 'light';
+            html.setAttribute('data-theme', newTheme);
+            localStorage.setItem('theme', newTheme);
+            updateThemeButton(newTheme);
+        }
+        
+        function updateThemeButton(theme) {
+            const icon = document.getElementById('theme-icon');
+            const text = document.getElementById('theme-text');
+            if (theme === 'light') {
+                icon.className = 'fas fa-sun';
+                text.textContent = 'Light';
+            } else {
+                icon.className = 'fas fa-moon';
+                text.textContent = 'Dark';
+            }
+        }
+        
+        // Load saved theme
+        function loadTheme() {
+            const saved = localStorage.getItem('theme') || 'dark';
+            document.documentElement.setAttribute('data-theme', saved);
+            updateThemeButton(saved);
+        }
+        
         // Real-time update without page refresh
         const API_URL = '/api/status';
         
@@ -635,6 +718,7 @@
         }
         
         // Initialize
+        loadTheme();
         updateTimestamp();
         setInterval(updateTimestamp, 1000);
         initLinks();
