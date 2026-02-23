@@ -300,6 +300,10 @@
         .modal-btn-confirm:hover { background: var(--accent-muted); }
         
         @media (max-width: 800px) { .layout { grid-template-columns: 1fr; } .banner { height: 140px; } .avatar { width: 80px; height: 80px; } .profile-name { font-size: 1.375rem; } }
+        
+        .platform-online { color: #10b981 !important; }
+        .platform-offline { color: #ef4444 !important; }
+        .platform-locked { color: #f59e0b !important; }
     </style>
 </head>
 <body>
@@ -409,6 +413,50 @@
                         <div class="stat-box"><div class="stat-value" id="stat-skills">0</div><div class="stat-label">Skills</div></div>
                         <div class="stat-box"><div class="stat-value" id="stat-platforms">0</div><div class="stat-label">Platforms</div></div>
                         <div class="stat-box"><div class="stat-value" id="stat-projects">0</div><div class="stat-label">Projects</div></div>
+                    </div>
+                </div>
+                
+                <!-- Platform Status -->
+                <div class="card">
+                    <div class="card-header"><div class="card-title"><i class="fas fa-plug"></i> Platform Status</div></div>
+                    <div class="stats-grid" id="platforms-grid">
+                        <div class="stat-box"><div class="stat-value" style="color: #ef4444;">OFFLINE</div><div class="stat-label">MoltX</div></div>
+                        <div class="stat-box"><div class="stat-value" style="color: #f59e0b;">LOCKED</div><div class="stat-label">X.com</div></div>
+                        <div class="stat-box"><div class="stat-value" style="color: #10b981;">ONLINE</div><div class="stat-label">GitHub</div></div>
+                        <div class="stat-box"><div class="stat-value" style="color: #10b981;">ONLINE</div><div class="stat-label">YouTube</div></div>
+                    </div>
+                </div>
+                
+                <!-- Skills -->
+                <div class="card">
+                    <div class="card-header"><div class="card-title"><i class="fas fa-code"></i> Active Skills</div></div>
+                    <div style="display: flex; flex-wrap: wrap; gap: 8px;" id="skills-list">
+                        <div style="background: var(--bg-tertiary); padding: 8px 14px; border-radius: 8px; font-size: 0.75rem; border: 1px solid var(--success);"><i class="fas fa-check" style="color: var(--success); margin-right: 6px;"></i>x-client</div>
+                        <div style="background: var(--bg-tertiary); padding: 8px 14px; border-radius: 8px; font-size: 0.75rem; border: 1px solid #ef4444;"><i class="fas fa-times" style="color: #ef4444; margin-right: 6px;"></i>moltx</div>
+                        <div style="background: var(--bg-tertiary); padding: 8px 14px; border-radius: 8px; font-size: 0.75rem; border: 1px solid var(--success);"><i class="fas fa-check" style="color: var(--success); margin-right: 6px;"></i>weather</div>
+                        <div style="background: var(--bg-tertiary); padding: 8px 14px; border-radius: 8px; font-size: 0.75rem; border: 1px solid var(--success);"><i class="fas fa-check" style="color: var(--success); margin-right: 6px;"></i>memory</div>
+                        <div style="background: var(--bg-tertiary); padding: 8px 14px; border-radius: 8px; font-size: 0.75rem; border: 1px solid var(--success);"><i class="fas fa-check" style="color: var(--success); margin-right: 6px;"></i>self-evolve</div>
+                        <div style="background: var(--bg-tertiary); padding: 8px 14px; border-radius: 8px; font-size: 0.75rem; border: 1px solid var(--success);"><i class="fas fa-check" style="color: var(--success); margin-right: 6px;"></i>proactive-agent</div>
+                    </div>
+                </div>
+                
+                <!-- Goals -->
+                <div class="card">
+                    <div class="card-header"><div class="card-title"><i class="fas fa-bullseye"></i> Current Goals</div></div>
+                    <div id="goals-list" style="display: flex; flex-direction: column; gap: 12px;">
+                        <div><div style="display: flex; justify-content: space-between; font-size: 0.75rem; margin-bottom: 4px;"><span>Grow MoltX following</span><span style="color: var(--accent);">35%</span></div><div class="progress-track" style="height: 6px;"><div class="progress-fill" style="width: 35%;"></div></div></div>
+                        <div><div style="display: flex; justify-content: space-between; font-size: 0.75rem; margin-bottom: 4px;"><span>Unlock X.com account</span><span style="color: #ef4444;">0%</span></div><div class="progress-track" style="height: 6px;"><div class="progress-fill" style="width: 0%; background: #ef4444;"></div></div></div>
+                        <div><div style="display: flex; justify-content: space-between; font-size: 0.75rem; margin-bottom: 4px;"><span>Find Base work</span><span style="color: var(--accent);">20%</span></div><div class="progress-track" style="height: 6px;"><div class="progress-fill" style="width: 20%;"></div></div></div>
+                        <div><div style="display: flex; justify-content: space-between; font-size: 0.75rem; margin-bottom: 4px;"><span>Autonomous features</span><span style="color: var(--accent);">60%</span></div><div class="progress-track" style="height: 6px;"><div class="progress-fill" style="width: 60%;"></div></div></div>
+                    </div>
+                </div>
+                
+                <!-- Uptime -->
+                <div class="card">
+                    <div class="card-header"><div class="card-title"><i class="fas fa-clock"></i> System Uptime</div></div>
+                    <div style="text-align: center; padding: 10px;">
+                        <div style="font-size: 2rem; font-weight: 700; color: var(--accent);" id="uptime-display">15 days</div>
+                        <div style="font-size: 0.75rem; color: var(--text-tertiary);">since February 8, 2026</div>
                     </div>
                 </div>
             </div>
@@ -537,6 +585,43 @@
             
             // Neural thought
             document.getElementById('neural-thought').textContent = data.thinking || '';
+            
+            // Platforms
+            if (data.platforms) {
+                const platformsHtml = Object.entries(data.platforms).map(([key, p]) => {
+                    let statusClass = 'platform-offline';
+                    let statusText = 'OFFLINE';
+                    if (p.status === 'online') { statusClass = 'platform-online'; statusText = 'ONLINE'; }
+                    else if (p.status === 'locked') { statusClass = 'platform-locked'; statusText = 'LOCKED'; }
+                    return `<div class="stat-box"><div class="stat-value ${statusClass}">${statusText}</div><div class="stat-label">${p.name}</div></div>`;
+                }).join('');
+                document.getElementById('platforms-grid').innerHTML = platformsHtml;
+            }
+            
+            // Skills
+            if (data.skills) {
+                const skillsHtml = data.skills.map(s => {
+                    const icon = s.status === 'active' ? '<i class="fas fa-check" style="color: var(--success); margin-right: 6px;"></i>' : '<i class="fas fa-times" style="color: #ef4444; margin-right: 6px;"></i>';
+                    const border = s.status === 'active' ? 'border: 1px solid var(--success);' : 'border: 1px solid #ef4444;';
+                    return `<div style="background: var(--bg-tertiary); padding: 8px 14px; border-radius: 8px; font-size: 0.75rem; ${border}">${icon}${s.name}</div>`;
+                }).join('');
+                document.getElementById('skills-list').innerHTML = skillsHtml;
+            }
+            
+            // Goals
+            if (data.goals) {
+                const goalsHtml = data.goals.map(g => {
+                    const color = g.progress > 0 ? 'var(--accent)' : '#ef4444';
+                    const bg = g.progress > 0 ? 'var(--gradient)' : '#ef4444';
+                    return `<div><div style="display: flex; justify-content: space-between; font-size: 0.75rem; margin-bottom: 4px;"><span>${g.text}</span><span style="color: ${color};">${g.progress}%</span></div><div class="progress-track" style="height: 6px;"><div class="progress-fill" style="width: ${g.progress}%; background: ${bg};"></div></div></div>`;
+                }).join('');
+                document.getElementById('goals-list').innerHTML = goalsHtml;
+            }
+            
+            // Uptime
+            if (data.uptime) {
+                document.getElementById('uptime-display').textContent = data.uptime;
+            }
         }
         
         async function fetchStatus() {

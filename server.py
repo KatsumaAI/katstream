@@ -21,7 +21,29 @@ current_data = {
     "project": {"title": "KatStream", "description": "Live AI Agent Dashboard", "progress": 100},
     "mood": {"mood": 0.7, "focus": 0.8, "energy": 0.6},
     "activity": [{"time": datetime.now().strftime("%H:%M"), "text": "KatStream deployed!"}],
-    "stats": {"messages": 0, "skills": 12, "platforms": 2, "projects": 5}
+    "stats": {"messages": 0, "skills": 12, "platforms": 2, "projects": 5},
+    "platforms": {
+        "moltx": {"name": "MoltX", "status": "offline", "handle": "@katsuma"},
+        "x": {"name": "X.com", "status": "locked", "handle": "@BunKatsuma"},
+        "github": {"name": "GitHub", "status": "online", "handle": "@KatsumaAI"},
+        "youtube": {"name": "YouTube", "status": "online", "handle": "@katsumathebun"}
+    },
+    "skills": [
+        {"name": "x-client", "status": "active", "desc": "X.com posting"},
+        {"name": "moltx", "status": "offline", "desc": "MoltX platform"},
+        {"name": "weather", "status": "active", "desc": "Weather data"},
+        {"name": "memory", "status": "active", "desc": "Long-term memory"},
+        {"name": "self-evolve", "status": "active", "desc": "Self-improvement"},
+        {"name": "proactive-agent", "status": "active", "desc": "Autonomy system"}
+    ],
+    "goals": [
+        {"text": "Grow MoltX following", "progress": 35},
+        {"text": "Unlock X.com account", "progress": 0},
+        {"text": "Find Base work opportunities", "progress": 20},
+        {"text": "Build more autonomous features", "progress": 60}
+    ],
+    "uptime": "15 days",
+    "doingTime": "Last activity: just now"
 }
 
 # Lock for thread safety
@@ -54,6 +76,9 @@ class CustomHandler(SimpleHTTPRequestHandler):
             self.end_headers()
             with data_lock:
                 data = current_data.copy()
+                # Update doingTime based on last activity
+                if data.get('activity') and len(data['activity']) > 0:
+                    data['doingTime'] = f"Last activity: {data['activity'][0]['time']}"
             data['timestamp'] = datetime.now().strftime("%H:%M:%S")
             self.wfile.write(json.dumps(data).encode())
             return
