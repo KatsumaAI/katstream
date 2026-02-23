@@ -57,7 +57,7 @@ class CustomHandler(SimpleHTTPRequestHandler):
         pass  # Suppress logging
 
 # Run server
-os.chdir('/Users/hjrjohnson/.openclaw/workspace')
+os.chdir(os.path.dirname(__file__))
 server = HTTPServer(('0.0.0.0', PORT), CustomHandler)
 print(f"Server running on port {PORT}")
 server.serve_forever()
