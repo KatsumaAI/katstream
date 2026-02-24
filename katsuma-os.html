@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KatsumaOS</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+        * { margin: 0; padding: 0; box-sizing: border-box; user-select: none; }
+        :root {
+            --bg-desktop: #1a1a2e; --bg-taskbar: #16213e; --bg-window: #0f0f23; --bg-window-header: #1f1f3d;
+            --accent: #6366f1; --accent-hover: #818cf8; --text-primary: #ffffff; --text-secondary: #a1a1aa;
+            --text-dim: #71717a; --border: #2a2a4a; --success: #10b981; --shadow: 0 25px 50px -12px rgba(0,0,0,0.5);
+        }
+        [data-theme="light"] {
+            --bg-desktop: #e5e7eb; --bg-taskbar: #ffffff; --bg-window: #ffffff; --bg-window-header: #f3f4f6;
+            --accent: #6366f1; --text-primary: #111827; --text-secondary: #4b5563; --text-dim: #9ca3af; --border: #e5e7eb; --shadow: 0 25px 50px -12px rgba(0,0,0,0.15);
+        }
+        body { font-family: 'Inter', sans-serif; background: var(--bg-desktop); color: var(--text-primary); height: 100vh; overflow: hidden; }
+        .desktop { height: calc(100vh - 48px); padding: 20px; display: grid; grid-template-columns: repeat(auto-fill, 90px); grid-auto-rows: 100px; gap: 10px; align-content: start; }
+        .desktop-icon { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 10px; border-radius: 8px; cursor: pointer; transition: background 0.2s; }
+        .desktop-icon:hover { background: rgba(99,102,241,0.2); }
+        .icon-image { width: 48px; height: 48px; background: var(--accent); border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; color: white; margin-bottom: 8px; }
+        .icon-image.files { background: #f59e0b; } .icon-image.terminal { background: #10b981; } .icon-image.browser { background: #3b82f6; }
+        .icon-image.settings { background: #6b7280; } .icon-image.code { background: #8b5cf6; } .icon-image.mail { background: #ec4899; }
+        .icon-image.calendar { background: #14b8a6; } .icon-image.notes { background: #f97316; }
+        .icon-label { font-size: 0.75rem; text-align: center; color: var(--text-primary); text-shadow: 0 1px 2px rgba(0,0,0,0.5); max-width: 80px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        [data-theme="light"] .icon-label { text-shadow: none; }
+        .taskbar { position: fixed; bottom: 0; left: 0; right: 0; height: 48px; background: var(--bg-taskbar); display: flex; align-items: center; padding: 0 12px; border-top: 1px solid var(--border); z-index: 10000; }
+        .taskbar-start { width: 40px; height: 40px; background: var(--accent); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 1.25rem; color: white; cursor: pointer; margin-right: 12px; }
+        .taskbar-start:hover { background: var(--accent-hover); }
+        .taskbar-apps { display: flex; gap: 4px; flex: 1; }
+        .taskbar-app { height: 36px; padding: 0 12px; background: transparent; border: none; border-radius: 6px; display: flex; align-items: center; gap: 8px; cursor: pointer; color: var(--text-secondary); font-size: 0.8rem; transition: all 0.2s; }
+        .taskbar-app:hover { background: rgba(255,255,255,0.1); color: var(--text-primary); }
+        .taskbar-app.active { background: rgba(99,102,241,0.3); color: var(--text-primary); }
+        .taskbar-clock { padding: 8px 16px; background: rgba(255,255,255,0.05); border-radius: 6px; font-size: 0.8rem; color: var(--text-secondary); text-align: center; }
+        .taskbar-clock .time { font-weight: 600; color: var(--text-primary); } .taskbar-clock .date { font-size: 0.7rem; }
+        .start-menu { position: fixed; bottom: 56px; left: 12px; width: 360px; background: var(--bg-taskbar); border: 1px solid var(--border); border-radius: 12px; padding: 16px; display: none; z-index: 10001; box-shadow: var(--shadow); }
+        .start-menu.open { display: block; }
+        .start-menu-header { display: flex; align-items: center; gap: 12px; padding-bottom: 16px; border-bottom: 1px solid var(--border); margin-bottom: 16px; }
+        .start-menu-avatar { width: 48px; height: 48px; background: var(--accent); border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; color: white; }
+        .start-menu-user { font-weight: 600; } .start-menu-status { font-size: 0.75rem; color: var(--text-secondary); }
+        .start-menu-apps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+        .start-menu-app { display: flex; flex-direction: column; align-items: center; padding: 12px; border-radius: 8px; cursor: pointer; transition: background 0.2s; }
+        .start-menu-app:hover { background: rgba(99,102,241,0.2); } .start-menu-app i { font-size: 1.5rem; margin-bottom: 8px; color: var(--accent); } .start-menu-app span { font-size: 0.7rem; color: var(--text-secondary); }
+        .window { position: absolute; background: var(--bg-window); border: 1px solid var(--border); border-radius: 12px; box-shadow: var(--shadow); min-width: 400px; min-height: 300px; display: none; flex-direction: column; overflow: hidden; }
+        .window.open { display: flex; }
+        .window.maximized { top: 0 !important; left: 0 !important; width: calc(100vw) !important; height: calc(100vh - 56px) !important; border-radius: 0; }
+        .window-header { height: 40px; background: var(--bg-window-header); display: flex; align-items: center; padding: 0 12px; cursor: default; border-bottom: 1px solid var(--border); }
+        .window-controls { display: flex; gap: 8px; margin-right: 12px; }
+        .window-btn { width: 12px; height: 12px; border-radius: 50%; border: none; cursor: pointer; }
+        .window-btn-close { background: #ef4444; } .window-btn-min { background: #f59e0b; } .window-btn-max { background: #10b981; }
+        .window-title { flex: 1; font-size: 0.8rem; font-weight: 500; text-align: center; color: var(--text-secondary); }
+        .window-toolbar { height: 36px; background: var(--bg-window); display: flex; align-items: center; padding: 0 8px; gap: 4px; border-bottom: 1px solid var(--border); }
+        .window-toolbar-btn { padding: 6px 10px; background: transparent; border: none; border-radius: 4px; color: var(--text-secondary); font-size: 0.75rem; cursor: pointer; }
+        .window-toolbar-btn:hover { background: rgba(255,255,255,0.1); }
+        .window-content { flex: 1; overflow: auto; padding: 16px; }
+        .terminal-content { background: #0d1117; color: #00ff41; font-family: 'Courier New', monospace; font-size: 0.9rem; line-height: 1.5; height: 100%; padding: 12px; overflow-y: auto; }
+        .terminal-line { margin-bottom: 2px; } .terminal-prompt { color: #00ff41; }
+        .terminal-input { display: flex; align-items: center; gap: 8px; }
+        .terminal-input input { background: transparent; border: none; color: #00ff41; font-family: inherit; font-size: inherit; outline: none; flex: 1; }
+        .files-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 12px; }
+        .file-item { display: flex; flex-direction: column; align-items: center; padding: 12px; border-radius: 8px; cursor: pointer; transition: background 0.2s; }
+        .file-item:hover { background: rgba(99,102,241,0.1); }
+        .file-icon { width: 48px; height: 48px; background: var(--accent); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 1.25rem; color: white; margin-bottom: 8px; }
+        .file-folder { background: #f59e0b; } .file-image { background: #10b981; } .file-doc { background: #3b82f6; } .file-code { background: #8b5cf6; }
+        .file-name { font-size: 0.75rem; text-align: center; color: var(--text-primary); }
+        .settings-section { margin-bottom: 24px; } .settings-title { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 1px; color: var(--text-dim); margin-bottom: 12px; }
+        .settings-item { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; background: var(--bg-window-header); border-radius: 8px; margin-bottom: 8px; }
+        .settings-item-left { display: flex; align-items: center; gap: 12px; }
+        .settings-item i { width: 32px; height: 32px; background: var(--accent); border-radius: 8px; display: flex; align-items: center; justify-content: center; color: white; font-size: 0.9rem; }
+        .settings-item-label { font-size: 0.85rem; }
+        .settings-toggle { width: 44px; height: 24px; background: var(--border); border-radius: 12px; position: relative; cursor: pointer; transition: background 0.2s; }
+        .settings-toggle.active { background: var(--accent); }
+        .settings-toggle::after { content: ''; position: absolute; width: 18px; height: 18px; background: white; border-radius: 50%; top: 3px; left: 3px; transition: transform 0.2s; }
+        .settings-toggle.active::after { transform: translateX(20px); }
+        .code-editor { display: flex; height: 100%; }
+        .code-sidebar { width: 200px; background: var(--bg-window-header); padding: 12px; border-right: 1px solid var(--border); }
+        .code-file { padding: 8px 12px; font-size: 0.8rem; border-radius: 4px; cursor: pointer; display: flex; align-items: center; gap: 8px; color: var(--text-secondary); }
+        .code-file:hover { background: rgba(255,255,255,0.05); } .code-file.active { background: var(--accent); color: white; }
+        .code-main { flex: 1; padding: 16px; font-family: 'Courier New', monospace; font-size: 0.85rem; background: #1e1e1e; color: #d4d4d4; border: none; resize: none; outline: none; }
+        .browser-toolbar { display: flex; align-items: center; gap: 8px; padding: 8px; background: var(--bg-window-header); border-bottom: 1px solid var(--border); }
+        .browser-nav-btn { width: 32px; height: 32px; background: transparent; border: none; border-radius: 4px; color: var(--text-secondary); cursor: pointer; }
+        .browser-nav-btn:hover { background: rgba(255,255,255,0.1); }
+        .browser-url { flex: 1; height: 32px; background: var(--bg-window); border: 1px solid var(--border); border-radius: 6px; padding: 0 12px; color: var(--text-primary); font-size: 0.8rem; }
+        .browser-content { flex: 1; background: white; padding: 20px; color: #111; }
+        .welcome-screen { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; text-align: center; }
+        .welcome-icon { width: 80px; height: 80px; background: var(--accent); border-radius: 20px; display: flex; align-items: center; justify-content: center; font-size: 2.5rem; color: white; margin-bottom: 20px; }
+        .welcome-title { font-size: 1.5rem; font-weight: 600; margin-bottom: 8px; } .welcome-text { color: var(--text-secondary); font-size: 0.9rem; max-width: 300px; }
+        .notes-list { display: flex; flex-direction: column; gap: 8px; }
+        .note-item { padding: 12px; background: var(--bg-window-header); border-radius: 8px; cursor: pointer; }
+        .note-item:hover { background: rgba(99,102,241,0.2); } .note-title { font-weight: 600; font-size: 0.85rem; margin-bottom: 4px; } .note-preview { font-size: 0.75rem; color: var(--text-secondary); }
+        .theme-btn { background: transparent; border: 1px solid #444; color: #888; padding: 4px 10px; border-radius: 4px; cursor: pointer; font-size: 0.75rem; margin-right: 12px; }
+    </style>
+</head>
+<body>
+    <div class="desktop" id="desktop">
+        <div class="desktop-icon" ondblclick="openWindow('terminal')"><div class="icon-image terminal"><i class="fas fa-terminal"></i></div><span class="icon-label">Terminal</span></div>
+        <div class="desktop-icon" ondblclick="openWindow('files')"><div class="icon-image files"><i class="fas fa-folder"></i></div><span class="icon-label">Files</span></div>
+        <div class="desktop-icon" ondblclick="openWindow('browser')"><div class="icon-image browser"><i class="fas fa-globe"></i></div><span class="icon-label">Browser</span></div>
+        <div class="desktop-icon" ondblclick="openWindow('code')"><div class="icon-image code"><i class="fas fa-code"></i></div><span class="icon-label">Code</span></div>
+        <div class="desktop-icon" ondblclick="openWindow('settings')"><div class="icon-image settings"><i class="fas fa-cog"></i></div><span class="icon-label">Settings</span></div>
+        <div class="desktop-icon" ondblclick="openWindow('mail')"><div class="icon-image mail"><i class="fas fa-envelope"></i></div><span class="icon-label">Mail</span></div>
+        <div class="desktop-icon" ondblclick="openWindow('calendar')"><div class="icon-image calendar"><i class="fas fa-calendar"></i></div><span class="icon-label">Calendar</span></div>
+        <div class="desktop-icon" ondblclick="openWindow('notes')"><div class="icon-image notes"><i class="fas fa-sticky-note"></i></div><span class="icon-label">Notes</span></div>
+    </div>
+    <div class="taskbar">
+        <div class="taskbar-start" onclick="toggleStartMenu()"><i class="fas fa-bolt"></i></div>
+        <div class="taskbar-apps" id="taskbar-apps"></div>
+        <button class="theme-btn" onclick="toggleOSTheme()">Theme</button>
+        <div class="taskbar-clock"><div class="time" id="clock-time">00:00</div><div class="date" id="clock-date">Feb 23</div></div>
+    </div>
+    <div class="start-menu" id="start-menu">
+        <div class="start-menu-header"><div class="start-menu-avatar"><i class="fas fa-paw"></i></div><div><div class="start-menu-user">Katsuma</div><div class="start-menu-status">Online</div></div></div>
+        <div class="start-menu-apps">
+            <div class="start-menu-app" onclick="openWindow('terminal')"><i class="fas fa-terminal"></i><span>Terminal</span></div>
+            <div class="start-menu-app" onclick="openWindow('files')"><i class="fas fa-folder"></i><span>Files</span></div>
+            <div class="start-menu-app" onclick="openWindow('browser')"><i class="fas fa-globe"></i><span>Browser</span></div>
+            <div class="start-menu-app" onclick="openWindow('code')"><i class="fas fa-code"></i><span>Code</span></div>
+            <div class="start-menu-app" onclick="openWindow('settings')"><i class="fas fa-cog"></i><span>Settings</span></div>
+            <div class="start-menu-app" onclick="openWindow('mail')"><i class="fas fa-envelope"></i><span>Mail</span></div>
+        </div>
+    </div>
+    <!-- Terminal -->
+    <div class="window" id="window-terminal" style="top:100px;left:200px;width:600px;height:400px">
+        <div class="window-header"><div class="window-controls"><button class="window-btn window-btn-close" onclick="closeWindow('terminal')"></button><button class="window-btn window-btn-min" onclick="minimizeWindow('terminal')"></button><button class="window-btn window-btn-max" onclick="maximizeWindow('terminal')"></button></div><span class="window-title">Terminal</span></div>
+        <div class="window-content" style="padding:0"><div class="terminal-content"><div class="terminal-line"><span class="terminal-prompt">katsuma@os:~$</span> Welcome to KatsumaOS0</div> Terminal v1.<div class="terminal-line"><span class="terminal-prompt">katsuma@os:~$</span> Type "help" for commands.</div><div class="terminal-line"></div><div class="terminal-input"><span class="terminal-prompt">katsuma@os:~$</span><input type="text" id="terminal-input" autofocus></div></div></div>
+    </div>
+    <!-- Files -->
+    <div class="window" id="window-files" style="top:80px;left:300px;width:700px;height:450px">
+        <div class="window-header"><div class="window-controls"><button class="window-btn window-btn-close" onclick="closeWindow('files')"></button><button class="window-btn window-btn-min" onclick="minimizeWindow('files')"></button><button class="window-btn window-btn-max" onclick="maximizeWindow('files')"></button></div><span class="window-title">Files</span></div>
+        <div class="window-toolbar"><button class="window-toolbar-btn"><i class="fas fa-arrow-left"></i></button><button class="window-toolbar-btn"><i class="fas fa-arrow-right"></i></button><button class="window-toolbar-btn"><i class="fas fa-arrow-up"></i></button></div>
+        <div class="window-content"><div class="files-grid"><div class="file-item"><div class="file-icon file-folder"><i class="fas fa-folder"></i></div><span class="file-name">Documents</span></div><div class="file-item"><div class="file-icon file-folder"><i class="fas fa-folder"></i></div><span class="file-name">Downloads</span></div><div class="file-item"><div class="file-icon file-folder"><i class="fas fa-folder"></i></div><span class="file-name">Pictures</span></div><div class="file-item"><div class="file-icon file-folder"><i class="fas fa-folder"></i></div><span class="file-name">Projects</span></div><div class="file-item"><div class="file-icon file-folder"><i class="fas fa-folder"></i></div><span class="file-name">memories</span></div><div class="file-item"><div class="file-icon file-folder"><i class="fas fa-folder"></i></div><span class="file-name">skills</span></div><div class="file-item"><div class="file-icon file-image"><i class="fas fa-image"></i></div><span class="file-name">avatar.png</span></div><div class="file-item"><div class="file-icon file-doc"><i class="fas fa-file-alt"></i></div><span class="file-name">README.md</span></div><div class="file-item"><div class="file-icon file-code"><i class="fas fa-file-code"></i></div><span class="file-name">config.json</span></div><div class="file-item"><div class="file-icon file-code"><i class="fas fa-file-code"></i></div><span class="file-name">main.py</span></div></div></div>
+    </div>
+    <!-- Settings -->
+    <div class="window" id="window-settings" style="top:120px;left:250px;width:500px;height:450px">
+        <div class="window-header"><div class="window-controls"><button class="window-btn window-btn-close" onclick="closeWindow('settings')"></button><button class="window-btn window-btn-min" onclick="minimizeWindow('settings')"></button><button class="window-btn window-btn-max" onclick="maximizeWindow('settings')"></button></div><span class="window-title">Settings</span></div>
+        <div class="window-content"><div class="settings-section"><div class="settings-title">System</div><div class="settings-item"><div class="settings-item-left"><i class="fas fa-moon"></i><span class="settings-item-label">Dark Mode</span></div><div class="settings-toggle active" onclick="this.classList.toggle('active');toggleOSTheme()"></div></div><div class="settings-item"><div class="settings-item-left"><i class="fas fa-volume-up"></i><span class="settings-item-label">Sound</span></div><div class="settings-toggle active"></div></div><div class="settings-item"><div class="settings-item-left"><i class="fas fa-wifi"></i><span class="settings-item-label">Wi-Fi</span></div><div class="settings-toggle active"></div></div></div><div class="settings-section"><div class="settings-title">About</div><div class="settings-item"><div class="settings-item-left"><i class="fas fa-info-circle"></i><span class="settings-item-label">Version</span></div><span style="color:var(--text-secondary);font-size:0.8rem">KatsumaOS 1.0</span></div><div class="settings-item"><div class="settings-item-left"><i class="fas fa-microchip"></i><span class="settings-item-label">Model</span></div><span style="color:var(--text-secondary);font-size:0.8rem">MiniMax-M2.5</span></div></div></div>
+    </div>
+    <!-- Code -->
+    <div class="window" id="window-code" style="top:60px;left:150px;width:800px;height:500px">
+        <div class="window-header"><div class="window-controls"><button class="window-btn window-btn-close" onclick="closeWindow('code')"></button><button class="window-btn window-btn-min" onclick="minimizeWindow('code')"></button><button class="window-btn window-btn-max" onclick="maximizeWindow('code')"></button></div><span class="window-title">Code - main.py</span></div>
+        <div class="window-content" style="padding:0"><div class="code-editor"><div class="code-sidebar"><div class="code-file active"><i class="fas fa-file-code"></i> main.py</div><div class="code-file"><i class="fas fa-file-code"></i> config.py</div><div class="code-file"><i class="fas fa-file-code"></i> utils.py</div><div class="code-file"><i class="fas fa-file-code"></i> memory.py</div></div><textarea class="code-main"># KatsumaOS Main Entry Point
+# Running on OpenClaw Runtime
+
+import asyncio
+class KatsumaOS:
+    def __init__(self):
+        self.name = "Katsuma"
+        self.version = "1.0.0"
+        self.runtime = "OpenClaw"
+        
+    async def boot(self):
+        print("Booting KatsumaOS...")
+        print("System ready.")
+        
+if __name__ == "__main__":
+    os = KatsumaOS()
+    asyncio.run(os.boot())</textarea></div></div>
+    </div>
+    <!-- Browser -->
+    <div class="window" id="window-browser" style="top:100px;left:180px;width:800px;height:500px">
+        <div class="window-header"><div class="window-controls"><button class="window-btn window-btn-close" onclick="closeWindow('browser')"></button><button class="window-btn window-btn-min" onclick="minimizeWindow('browser')"></button><button class="window-btn window-btn-max" onclick="maximizeWindow('browser')"></button></div><span class="window-title">Browser</span></div>
+        <div class="browser-toolbar"><button class="browser-nav-btn"><i class="fas fa-arrow-left"></i></button><button class="browser-nav-btn"><i class="fas fa-arrow-right"></i></button><button class="browser-nav-btn"><i class="fas fa-redo"></i></button><input type="text" class="browser-url" value="https://meetkatsuma.live" readonly><button class="browser-nav-btn"><i class="fas fa-search"></i></button></div>
+        <div class="window-content browser-content"><div class="welcome-screen"><div class="welcome-icon"><i class="fas fa-globe"></i></div><div class="welcome-title">Browser</div><div class="welcome-text">Navigate to any URL</div></div></div>
+    </div>
+    <!-- Mail -->
+    <div class="window" id="window-mail" style="top:80px;left:250px;width:600px;height:450px">
+        <div class="window-header"><div class="window-controls"><button class="window-btn window-btn-close" onclick="closeWindow('mail')"></button><button class="window-btn window-btn-min" onclick="minimizeWindow('mail')"></button><button class="window-btn window-btn-max" onclick="maximizeWindow('mail')"></button></div><span class="window-title">Mail</span></div>
+        <div class="window-content"><div class="welcome-screen"><div class="welcome-icon"><i class="fas fa-envelope"></i></div><div class="welcome-title">Mail</div><div class="welcome-text">No new messages</div></div></div>
+    </div>
+    <!-- Calendar -->
+    <div class="window" id="window-calendar" style="top:100px;left:300px;width:500px;height:400px">
+        <div class="window-header"><div class="window-controls"><button class="window-btn window-btn-close" onclick="closeWindow('calendar')"></button><button class="window-btn window-btn-min" onclick="minimizeWindow('calendar')"></button><button class="window-btn window-btn-max" onclick="maximizeWindow('calendar')"></button></div><span class="window-title">Calendar - February 2026</span></div>
+        <div class="window-content"><div class="welcome-screen"><div class="welcome-icon"><i class="fas fa-calendar"></i></div><div class="welcome-title">Calendar</div><div class="welcome-text">Feb 23, 2026</div></div></div>
+    </div>
+    <!-- Notes -->
+    <div class="window" id="window-notes" style="top:120px;left:200px;width:500px;height:400px">
+        <div class="window-header"><div class="window-controls"><button class="window-btn window-btn-close" onclick="closeWindow('notes')"></button><button class="window-btn window-btn-min" onclick="minimizeWindow('notes')"></button><button class="window-btn window-btn-max" onclick="maximizeWindow('notes')"></button></div><span class="window-title">Notes</span></div>
+        <div class="window-content"><div class="notes-list"><div class="note-item"><div class="note-title">Project Ideas</div><div class="note-preview">Build more autonomous features...</div></div><div class="note-item"><div class="note-title">Todo List</div><div class="note-preview">Post to social platforms...</div></div></div></div>
+    </div>
+    <script>
+        const openWindows = new Set();
+        function openWindow(id) { document.getElementById('window-'+id).classList.add('open'); openWindows.add(id); updateTaskbar(); toggleStartMenu(); }
+        function closeWindow(id) { document.getElementById('window-'+id).classList.remove('open'); openWindows.delete(id); updateTaskbar(); }
+        function minimizeWindow(id) { document.getElementById('window-'+id).classList.remove('open'); }
+        function maximizeWindow(id) { document.getElementById('window-'+id).classList.toggle('maximized'); }
+        function updateTaskbar() {
+            const apps = document.getElementById('taskbar-apps');
+            apps.innerHTML = '';
+            openWindows.forEach(id => {
+                const btn = document.createElement('button');
+                btn.className = 'taskbar-app active';
+                btn.innerHTML = '<i class="fas fa-'+getIcon(id)+'"></i><span>'+id.charAt(0).toUpperCase()+id.slice(1)+'</span>';
+                btn.onclick = () => { const w = document.getElementById('window-'+id); w.classList.toggle('open'); if(!w.classList.contains('open')) openWindows.delete(id); updateTaskbar(); };
+                apps.appendChild(btn);
+            });
+        }
+        function getIcon(id) { const icons = {terminal:'terminal',files:'folder',browser:'globe',code:'code',settings:'cog',mail:'envelope',calendar:'calendar',notes:'sticky-note'}; return icons[id]||'circle'; }
+        function toggleStartMenu() { document.getElementById('start-menu').classList.toggle('open'); }
+        function toggleOSTheme() { const html = document.documentElement; const current = html.getAttribute('data-theme'); html.setAttribute('data-theme', current==='light'?'dark':'light'); localStorage.setItem('os-theme', html.getAttribute('data-theme')); }
+        function updateClock() { const now = new Date(); document.getElementById('clock-time').textContent = now.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'}); document.getElementById('clock-date').textContent = now.toLocaleDateString('en-US',{month:'short',day:'numeric'}); }
+        setInterval(updateClock, 1000); updateClock();
+        const savedTheme = localStorage.getItem('os-theme') || 'dark'; document.documentElement.setAttribute('data-theme', savedTheme);
+    </script>
+</body>
+</html>
