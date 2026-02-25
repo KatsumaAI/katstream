@@ -14,6 +14,21 @@ SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 # Auth - set via KATSTREAM_API_KEY env var
 API_KEY = os.environ.get('KATSTREAM_API_KEY', 'katstream-internal-change-me')
 
+# Backup file path (persistent storage)
+BACKUP_FILE = os.environ.get('KATSTREAM_BACKUP_FILE', os.path.join(SCRIPT_DIR, 'data', 'backup.json'))
+
+# Ensure data directory exists
+os.makedirs(os.path.dirname(BACKUP_FILE), exist_ok=True)
+
+# Load backup on startup if exists
+if os.path.exists(BACKUP_FILE):
+    try:
+        with open(BACKUP_FILE, 'r') as f:
+            current_data = json.load(f)
+            print(f"Loaded backup from {BACKUP_FILE}")
+    except Exception as e:
+        print(f"Could not load backup: {e}")
+
 # In-memory data store
 current_data = {
     "doing": "Waiting for updates...",
@@ -64,6 +79,37 @@ current_data = {
 data_lock = threading.Lock()
 
 ALLOWED_FILES = {'/katstream.html', '/stream-data.json', '/api/status', '/api/update', '/api/views', '/api/reviews', '/api/reviews/moderate', '/skill.md', '/api/skill', '/katsuma-os.html', '/blog.html', '/article.html'}
+
+# Backup functions
+def save_backup():
+    """Save current data to backup file"""
+    try:
+        with data_lock:
+            # Don't save views/activity that reset on restart
+            backup_data = current_data.copy()
+            backup_data['views'] = 0
+            backup_data['views_today'] = 0
+            backup_data['article_views'] = {}
+            backup_data['activity'] = []
+        
+        with open(BACKUP_FILE, 'w') as f:
+            json.dump(backup_data, f, indent=2)
+        return True
+    except Exception as e:
+        print(f"Backup failed: {e}")
+        return False
+
+def load_backup():
+    """Load data from backup file"""
+    global current_data
+    try:
+        if os.path.exists(BACKUP_FILE):
+            with open(BACKUP_FILE, 'r') as f:
+                current_data = json.load(f)
+            return True
+    except Exception as e:
+        print(f"Load backup failed: {e}")
+    return False
 
 def check_auth(headers):
     """Check if request has valid API key"""
@@ -322,6 +368,9 @@ Built for AI agents on MoltX 🐰"""
                 with data_lock:
                     current_data['reviews_pending'] = [review] + current_data.get('reviews_pending', [])[:19]  # Keep last 20 in pending
                 
+                # Save backup after review submitted
+                save_backup()
+                
                 self.send_response(200)
                 self.send_header('Content-Type', 'application/json')
                 self.end_headers()
@@ -396,6 +445,48 @@ Built for AI agents on MoltX 🐰"""
                 self.wfile.write(json.dumps({"error": str(e)}).encode())
                 return
         
+        # Backup endpoint (requires auth - for Katsuma to save backup)
+        if parsed.path == '/api/backup':
+            if not check_auth(self.headers):
+                self.send_response(401)
+                self.send_header('Content-Type', 'application/json')
+                self.end_headers()
+                self.wfile.write(json.dumps({"error": "Unauthorized"}).encode())
+                return
+            
+            if save_backup():
+                self.send_response(200)
+                self.send_header('Content-Type', 'application/json')
+                self.end_headers()
+                self.wfile.write(json.dumps({"success": True, "message": "Backup saved"})).encode()
+            else:
+                self.send_response(500)
+                self.send_header('Content-Type', 'application/json')
+                self.end_headers()
+                self.wfile.write(json.dumps({"error": "Backup failed"})).encode()
+            return
+        
+        # Restore endpoint (requires auth - for Katsuma to restore backup)
+        if parsed.path == '/api/restore':
+            if not check_auth(self.headers):
+                self.send_response(401)
+                self.send_header('Content-Type', 'application/json')
+                self.end_headers()
+                self.wfile.write(json.dumps({"error": "Unauthorized"}).encode())
+                return
+            
+            if load_backup():
+                self.send_response(200)
+                self.send_header('Content-Type', 'application/json')
+                self.end_headers()
+                self.wfile.write(json.dumps({"success": True, "message": "Backup restored", "data": current_data})).encode()
+            else:
+                self.send_response(404)
+                self.send_header('Content-Type', 'application/json')
+                self.end_headers()
+                self.wfile.write(json.dumps({"error": "No backup found"})).encode()
+            return
+        
         # Articles endpoint (requires auth - for Katsuma only)
         if parsed.path == '/api/articles':
             if not check_auth(self.headers):
@@ -446,6 +537,9 @@ Built for AI agents on MoltX 🐰"""
                 with data_lock:
                     current_data['articles'] = [article] + current_data.get('articles', [])[:49]  # Keep last 50
                 
+                # Save backup after creating article
+                save_backup()
+                
                 self.send_response(200)
                 self.send_header('Content-Type', 'application/json')
                 self.end_headers()
@@ -487,6 +581,9 @@ Built for AI agents on MoltX 🐰"""
                                 current_data[key] = update_data[key] + current_data.get(key, [])[:9]
                             else:
                                 current_data[key] = update_data[key]
+                
+                # Save backup after update
+                save_backup()
                 
                 with data_lock:
                     data = current_data.copy()
