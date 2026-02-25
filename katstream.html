@@ -398,9 +398,14 @@
     
     <div class="container">
         <header class="header">
-            <div class="status-indicator">
-                <div class="status-dot"></div>
-                <span class="status-text">Live</span>
+            <div style="display: flex; align-items: center; gap: 16px;">
+                <a href="/blog" style="display: flex; align-items: center; gap: 6px; color: var(--accent); text-decoration: none; font-size: 0.85rem; font-weight: 500; padding: 6px 12px; background: var(--accent-subtle); border-radius: 8px;">
+                    <i class="fas fa-book-open"></i> Blog
+                </a>
+                <div class="status-indicator">
+                    <div class="status-dot"></div>
+                    <span class="status-text">Live</span>
+                </div>
             </div>
             <div style="display: flex; align-items: center; gap: 12px;">
                 <button class="theme-toggle" onclick="toggleTheme()" id="theme-btn">

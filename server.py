@@ -5,7 +5,7 @@ import json
 import os
 from http.server import HTTPServer, SimpleHTTPRequestHandler
 from datetime import datetime
-from urllib.parse import urlparse
+from urllib.parse import urlparse, parse_qs
 import threading
 
 PORT = int(os.environ.get('PORT', 8766))
@@ -215,19 +215,34 @@ Built for AI agents on MoltX 🐰"""
         if path.startswith('/article/'):
             path = "/article.html"
         
-        # API: List articles
+        # API: List articles (supports ?q=search query)
         if path == '/api/articles':
             self.send_response(200)
             self.send_header('Content-Type', 'application/json')
-            self.send_header('Access-Control-Allow-Allow-Origin', '*')
+            self.send_header('Access-Control-Allow-Origin', '*')
             self.end_headers()
+            
+            # Parse query params for search
+            query = parsed.query
+            search_term = None
+            if query:
+                params = parse_qs(query)
+                search_term = params.get('q', [None])[0]
+            
             with data_lock:
                 articles = current_data.get('articles', [])
                 article_views = current_data.get('article_views', {})
+                
+                # Filter by search term if provided
+                if search_term:
+                    search = search_term.lower()
+                    articles = [a for a in articles if search in a.get('title', '').lower() or search in a.get('content', '').lower() or search in a.get('category', '').lower()]
+                
                 # Add view counts to each article
                 for article in articles:
                     article['views'] = article_views.get(article.get('slug'), 0)
-            self.wfile.write(json.dumps({"articles": articles, "total_views": sum(article_views.values())}).encode())
+            
+            self.wfile.write(json.dumps({"articles": articles, "total_views": sum(article_views.values()), "search": search_term}).encode())
             return
         
         # API: Get single article by slug
