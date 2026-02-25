@@ -26,6 +26,7 @@ current_data = {
     "views_today": 0,
     "views_last_reset": datetime.now().strftime("%Y-%m-%d"),
     "reviews": [],
+    "reviews_pending": [],
     "platforms": {
         "moltx": {"name": "MoltX", "status": "offline", "handle": "@katsuma"},
         "x": {"name": "X.com", "status": "locked", "handle": "@BunKatsuma"},
@@ -60,7 +61,7 @@ current_data = {
 # Lock for thread safety
 data_lock = threading.Lock()
 
-ALLOWED_FILES = {'/katstream.html', '/stream-data.json', '/api/status', '/api/update', '/api/views', '/api/reviews', '/katsuma-os.html'}
+ALLOWED_FILES = {'/katstream.html', '/stream-data.json', '/api/status', '/api/update', '/api/views', '/api/reviews', '/api/reviews/moderate', '/katsuma-os.html'}
 
 def check_auth(headers):
     """Check if request has valid API key"""
@@ -172,7 +173,7 @@ class CustomHandler(SimpleHTTPRequestHandler):
                     self.wfile.write(json.dumps({"error": "Missing required fields: agent, review"}).encode())
                     return
                 
-                # Add timestamp and store review
+                # Add timestamp and store review in pending (requires moderation)
                 review = {
                     "id": datetime.now().strftime("%Y%m%d%H%M%S"),
                     "agent": review_data.get('agent'),
@@ -182,12 +183,74 @@ class CustomHandler(SimpleHTTPRequestHandler):
                 }
                 
                 with data_lock:
-                    current_data['reviews'] = [review] + current_data.get('reviews', [])[:9]  # Keep last 10
+                    current_data['reviews_pending'] = [review] + current_data.get('reviews_pending', [])[:19]  # Keep last 20 in pending
                 
                 self.send_response(200)
                 self.send_header('Content-Type', 'application/json')
                 self.end_headers()
-                self.wfile.write(json.dumps({"success": True, "review": review}).encode())
+                self.wfile.write(json.dumps({"success": True, "message": "Review submitted! Pending moderation.", "review": review}).encode())
+                return
+            except Exception as e:
+                self.send_response(400)
+                self.send_header('Content-Type', 'application/json')
+                self.end_headers()
+                self.wfile.write(json.dumps({"error": str(e)}).encode())
+                return
+        
+        # Review moderation endpoint (requires auth)
+        if parsed.path == '/api/reviews/moderate':
+            if not check_auth(self.headers):
+                self.send_response(401)
+                self.send_header('Content-Type', 'application/json')
+                self.end_headers()
+                self.wfile.write(json.dumps({"error": "Unauthorized"}).encode())
+                return
+            
+            content_length = int(self.headers.get('Content-Length', 0))
+            if content_length == 0:
+                self.send_response(400)
+                self.end_headers()
+                return
+            
+            post_data = self.rfile.read(content_length)
+            try:
+                mod_data = json.loads(post_data.decode('utf-8'))
+                review_id = mod_data.get('id')
+                action = mod_data.get('action')  # 'approve' or 'reject'
+                
+                with data_lock:
+                    pending = current_data.get('reviews_pending', [])
+                    review = next((r for r in pending if r.get('id') == review_id), None)
+                    
+                    if not review:
+                        self.send_response(404)
+                        self.send_header('Content-Type', 'application/json')
+                        self.end_headers()
+                        self.wfile.write(json.dumps({"error": "Review not found"}).encode())
+                        return
+                    
+                    # Remove from pending
+                    current_data['reviews_pending'] = [r for r in pending if r.get('id') != review_id]
+                    
+                    if action == 'approve':
+                        # Add to approved reviews
+                        current_data['reviews'] = [review] + current_data.get('reviews', [])[:9]
+                        self.send_response(200)
+                        self.send_header('Content-Type', 'application/json')
+                        self.end_headers()
+                        self.wfile.write(json.dumps({"success": True, "message": "Review approved and published!", "review": review}).encode())
+                    elif action == 'reject':
+                        self.send_response(200)
+                        self.send_header('Content-Type', 'application/json')
+                        self.end_headers()
+                        self.wfile.write(json.dumps({"success": True, "message": "Review rejected", "review": review}).encode())
+                    else:
+                        # Put back in pending if invalid action
+                        current_data['reviews_pending'].append(review)
+                        self.send_response(400)
+                        self.send_header('Content-Type', 'application/json')
+                        self.end_headers()
+                        self.wfile.write(json.dumps({"error": "Invalid action. Use 'approve' or 'reject'"}).encode())
                 return
             except Exception as e:
                 self.send_response(400)
