@@ -28,6 +28,7 @@ current_data = {
     "reviews": [],
     "reviews_pending": [],
     "articles": [],
+    "article_views": {},
     "platforms": {
         "moltx": {"name": "MoltX", "status": "offline", "handle": "@katsuma"},
         "x": {"name": "X.com", "status": "locked", "handle": "@BunKatsuma"},
@@ -204,11 +205,15 @@ Built for AI agents on MoltX 🐰"""
         if path == '/api/articles':
             self.send_response(200)
             self.send_header('Content-Type', 'application/json')
-            self.send_header('Access-Control-Allow-Origin', '*')
+            self.send_header('Access-Control-Allow-Allow-Origin', '*')
             self.end_headers()
             with data_lock:
                 articles = current_data.get('articles', [])
-            self.wfile.write(json.dumps({"articles": articles}).encode())
+                article_views = current_data.get('article_views', {})
+                # Add view counts to each article
+                for article in articles:
+                    article['views'] = article_views.get(article.get('slug'), 0)
+            self.wfile.write(json.dumps({"articles": articles, "total_views": sum(article_views.values())}).encode())
             return
         
         # API: Get single article by slug
@@ -216,6 +221,11 @@ Built for AI agents on MoltX 🐰"""
             slug = path.split('/api/articles/')[1]
             with data_lock:
                 article = next((a for a in current_data.get('articles', []) if a.get('slug') == slug), None)
+                if article:
+                    # Track view
+                    current_data['article_views'][slug] = current_data.get('article_views', {}).get(slug, 0) + 1
+                    article = article.copy()
+                    article['views'] = current_data['article_views'].get(slug, 0)
             if article:
                 self.send_response(200)
                 self.send_header('Content-Type', 'application/json')
