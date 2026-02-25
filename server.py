@@ -22,6 +22,9 @@ current_data = {
     "mood": {"mood": 0.7, "focus": 0.8, "energy": 0.6},
     "activity": [{"time": datetime.now().strftime("%H:%M"), "text": "KatStream deployed!"}],
     "stats": {"messages": 0, "skills": 12, "platforms": 2, "projects": 5},
+    "views": 0,
+    "views_today": 0,
+    "views_last_reset": datetime.now().strftime("%Y-%m-%d"),
     "platforms": {
         "moltx": {"name": "MoltX", "status": "offline", "handle": "@katsuma"},
         "x": {"name": "X.com", "status": "locked", "handle": "@BunKatsuma"},
@@ -56,7 +59,7 @@ current_data = {
 # Lock for thread safety
 data_lock = threading.Lock()
 
-ALLOWED_FILES = {'/katstream.html', '/stream-data.json', '/api/status', '/api/update', '/katsuma-os.html'}
+ALLOWED_FILES = {'/katstream.html', '/stream-data.json', '/api/status', '/api/update', '/api/views', '/katsuma-os.html'}
 
 def check_auth(headers):
     """Check if request has valid API key"""
@@ -75,13 +78,38 @@ class CustomHandler(SimpleHTTPRequestHandler):
         parsed = urlparse(self.path)
         path = parsed.path
         
+        # API views endpoint
+        if path == '/api/views':
+            self.send_response(200)
+            self.send_header('Content-Type', 'application/json')
+            self.send_header('Access-Control-Allow-Origin', '*')
+            self.end_headers()
+            today = datetime.now().strftime("%Y-%m-%d")
+            with data_lock:
+                # Reset daily views if it's a new day
+                if current_data.get('views_last_reset') != today:
+                    current_data['views_today'] = 0
+                    current_data['views_last_reset'] = today
+                view_data = {
+                    "total_views": current_data.get('views', 0),
+                    "views_today": current_data.get('views_today', 0),
+                    "last_view": current_data.get('last_view', None)
+                }
+            self.wfile.write(json.dumps(view_data).encode())
+            return
+        
         # API status endpoint
         if path == '/api/status':
             self.send_response(200)
             self.send_header('Content-Type', 'application/json')
             self.send_header('Access-Control-Allow-Origin', '*')
             self.end_headers()
+            today = datetime.now().strftime("%Y-%m-%d")
             with data_lock:
+                # Reset daily views if it's a new day
+                if current_data.get('views_last_reset') != today:
+                    current_data['views_today'] = 0
+                    current_data['views_last_reset'] = today
                 data = current_data.copy()
                 # Update doingTime based on last activity
                 if data.get('activity') and len(data['activity']) > 0:
@@ -89,6 +117,17 @@ class CustomHandler(SimpleHTTPRequestHandler):
             data['timestamp'] = datetime.now().strftime("%H:%M:%S")
             self.wfile.write(json.dumps(data).encode())
             return
+        
+        # Track views for HTML page loads
+        if path in ("/", "/index.html", "/katstream.html", "/katsuma-os.html"):
+            today = datetime.now().strftime("%Y-%m-%d")
+            with data_lock:
+                if current_data.get('views_last_reset') != today:
+                    current_data['views_today'] = 0
+                    current_data['views_last_reset'] = today
+                current_data['views'] = current_data.get('views', 0) + 1
+                current_data['views_today'] = current_data.get('views_today', 0) + 1
+                current_data['last_view'] = datetime.now().strftime("%H:%M:%S")
         
         # Root serves katstream.html
         if path in ("/", "/index.html"):
