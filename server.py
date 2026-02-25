@@ -3,6 +3,7 @@
 
 import json
 import os
+import gzip
 from http.server import HTTPServer, SimpleHTTPRequestHandler
 from datetime import datetime
 from urllib.parse import urlparse, parse_qs
@@ -82,7 +83,7 @@ ALLOWED_FILES = {'/katstream.html', '/stream-data.json', '/api/status', '/api/up
 
 # Backup functions
 def save_backup():
-    """Save current data to backup file"""
+    """Save current data to compressed backup file"""
     try:
         with data_lock:
             # Don't save views/activity that reset on restart
@@ -92,7 +93,8 @@ def save_backup():
             backup_data['article_views'] = {}
             backup_data['activity'] = []
         
-        with open(BACKUP_FILE, 'w') as f:
+        # Save as compressed JSON
+        with gzip.open(BACKUP_FILE + '.gz', 'wt', encoding='utf-8') as f:
             json.dump(backup_data, f, indent=2)
         return True
     except Exception as e:
@@ -100,11 +102,12 @@ def save_backup():
         return False
 
 def load_backup():
-    """Load data from backup file"""
+    """Load data from compressed backup file"""
     global current_data
+    gz_file = BACKUP_FILE + '.gz'
     try:
-        if os.path.exists(BACKUP_FILE):
-            with open(BACKUP_FILE, 'r') as f:
+        if os.path.exists(gz_file):
+            with gzip.open(gz_file, 'rt', encoding='utf-8') as f:
                 current_data = json.load(f)
             return True
     except Exception as e:
