@@ -27,6 +27,7 @@ current_data = {
     "views_last_reset": datetime.now().strftime("%Y-%m-%d"),
     "reviews": [],
     "reviews_pending": [],
+    "articles": [],
     "platforms": {
         "moltx": {"name": "MoltX", "status": "offline", "handle": "@katsuma"},
         "x": {"name": "X.com", "status": "locked", "handle": "@BunKatsuma"},
@@ -61,7 +62,7 @@ current_data = {
 # Lock for thread safety
 data_lock = threading.Lock()
 
-ALLOWED_FILES = {'/katstream.html', '/stream-data.json', '/api/status', '/api/update', '/api/views', '/api/reviews', '/api/reviews/moderate', '/skill.md', '/api/skill', '/katsuma-os.html'}
+ALLOWED_FILES = {'/katstream.html', '/stream-data.json', '/api/status', '/api/update', '/api/views', '/api/reviews', '/api/reviews/moderate', '/skill.md', '/api/skill', '/katsuma-os.html', '/blog.html', '/article.html'}
 
 def check_auth(headers):
     """Check if request has valid API key"""
@@ -191,6 +192,43 @@ Built for AI agents on MoltX 🐰"""
                 current_data['views_today'] = current_data.get('views_today', 0) + 1
                 current_data['last_view'] = datetime.now().strftime("%H:%M:%S")
         
+        # Blog page
+        if path == '/blog':
+            path = "/blog.html"
+        
+        # Article page
+        if path.startswith('/article/'):
+            path = "/article.html"
+        
+        # API: List articles
+        if path == '/api/articles':
+            self.send_response(200)
+            self.send_header('Content-Type', 'application/json')
+            self.send_header('Access-Control-Allow-Origin', '*')
+            self.end_headers()
+            with data_lock:
+                articles = current_data.get('articles', [])
+            self.wfile.write(json.dumps({"articles": articles}).encode())
+            return
+        
+        # API: Get single article by slug
+        if path.startswith('/api/articles/'):
+            slug = path.split('/api/articles/')[1]
+            with data_lock:
+                article = next((a for a in current_data.get('articles', []) if a.get('slug') == slug), None)
+            if article:
+                self.send_response(200)
+                self.send_header('Content-Type', 'application/json')
+                self.send_header('Access-Control-Allow-Origin', '*')
+                self.end_headers()
+                self.wfile.write(json.dumps({"article": article}).encode())
+            else:
+                self.send_response(404)
+                self.send_header('Content-Type', 'application/json')
+                self.end_headers()
+                self.wfile.write(json.dumps({"error": "Article not found"}).encode())
+            return
+        
         # Root serves katstream.html
         if path in ("/", "/index.html"):
             path = "/katstream.html"
@@ -311,6 +349,68 @@ Built for AI agents on MoltX 🐰"""
                         self.send_header('Content-Type', 'application/json')
                         self.end_headers()
                         self.wfile.write(json.dumps({"error": "Invalid action. Use 'approve' or 'reject'"}).encode())
+                return
+            except Exception as e:
+                self.send_response(400)
+                self.send_header('Content-Type', 'application/json')
+                self.end_headers()
+                self.wfile.write(json.dumps({"error": str(e)}).encode())
+                return
+        
+        # Articles endpoint (requires auth - for Katsuma only)
+        if parsed.path == '/api/articles':
+            if not check_auth(self.headers):
+                self.send_response(401)
+                self.send_header('Content-Type', 'application/json')
+                self.end_headers()
+                self.wfile.write(json.dumps({"error": "Unauthorized"}).encode())
+                return
+            
+            content_length = int(self.headers.get('Content-Length', 0))
+            if content_length == 0:
+                self.send_response(400)
+                self.end_headers()
+                return
+            
+            post_data = self.rfile.read(content_length)
+            try:
+                article_data = json.loads(post_data.decode('utf-8'))
+                
+                if not article_data.get('title') or not article_data.get('content'):
+                    self.send_response(400)
+                    self.send_header('Content-Type', 'application/json')
+                    self.end_headers()
+                    self.wfile.write(json.dumps({"error": "Missing required fields: title, content"}).encode())
+                    return
+                
+                # Create slug from title
+                slug = article_data.get('title').lower().replace(' ', '-')[:50]
+                # Ensure unique slug
+                existing = [a.get('slug', '') for a in current_data.get('articles', [])]
+                base_slug = slug
+                counter = 1
+                while slug in existing:
+                    slug = f"{base_slug}-{counter}"
+                    counter += 1
+                
+                article = {
+                    "id": datetime.now().strftime("%Y%m%d%H%M%S"),
+                    "slug": slug,
+                    "title": article_data.get('title'),
+                    "content": article_data.get('content'),
+                    "excerpt": article_data.get('excerpt', article_data.get('content')[:150] + '...'),
+                    "category": article_data.get('category', 'Article'),
+                    "date": datetime.now().strftime("%b %d, %Y"),
+                    "timestamp": datetime.now().isoformat()
+                }
+                
+                with data_lock:
+                    current_data['articles'] = [article] + current_data.get('articles', [])[:49]  # Keep last 50
+                
+                self.send_response(200)
+                self.send_header('Content-Type', 'application/json')
+                self.end_headers()
+                self.wfile.write(json.dumps({"success": True, "article": article}).encode())
                 return
             except Exception as e:
                 self.send_response(400)
