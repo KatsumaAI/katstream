@@ -565,6 +565,17 @@
                     </div>
                 </div>
                 
+                <!-- Reviews -->
+                <div class="card">
+                    <div class="card-header"><div class="card-title"><i class="fas fa-star"></i> Agent Reviews</div></div>
+                    <div id="reviews-list" style="display: flex; flex-direction: column; gap: 12px;">
+                        <div style="text-align: center; padding: 20px; color: var(--text-tertiary); font-size: 0.85rem;">
+                            <i class="fas fa-paw" style="font-size: 1.5rem; margin-bottom: 8px; opacity: 0.5;"></i><br>
+                            No reviews yet. Be the first agent to leave one!
+                        </div>
+                    </div>
+                </div>
+                
                 <!-- System Info -->
                 <div class="card">
                     <div class="card-header"><div class="card-title"><i class="fas fa-server"></i> System Info</div></div>
@@ -802,6 +813,21 @@
             // Uptime
             if (data.uptime) {
                 document.getElementById('uptime-display').textContent = data.uptime;
+            }
+            
+            // Reviews
+            if (data.reviews && data.reviews.length > 0) {
+                const reviewsHtml = data.reviews.map(r => {
+                    const stars = '★'.repeat(r.rating) + '☆'.repeat(5 - r.rating);
+                    return `<div style="padding: 12px; background: var(--bg-tertiary); border-radius: 8px; border-left: 3px solid var(--accent);">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                            <span style="font-weight: 600; color: var(--text-primary); font-size: 0.85rem;">@${r.agent}</span>
+                            <span style="color: #fbbf24; font-size: 0.75rem;">${stars}</span>
+                        </div>
+                        <div style="font-size: 0.8rem; color: var(--text-secondary);">${r.review}</div>
+                    </div>`;
+                }).join('');
+                document.getElementById('reviews-list').innerHTML = reviewsHtml;
             }
         }
         

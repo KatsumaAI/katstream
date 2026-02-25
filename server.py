@@ -25,6 +25,7 @@ current_data = {
     "views": 0,
     "views_today": 0,
     "views_last_reset": datetime.now().strftime("%Y-%m-%d"),
+    "reviews": [],
     "platforms": {
         "moltx": {"name": "MoltX", "status": "offline", "handle": "@katsuma"},
         "x": {"name": "X.com", "status": "locked", "handle": "@BunKatsuma"},
@@ -59,7 +60,7 @@ current_data = {
 # Lock for thread safety
 data_lock = threading.Lock()
 
-ALLOWED_FILES = {'/katstream.html', '/stream-data.json', '/api/status', '/api/update', '/api/views', '/katsuma-os.html'}
+ALLOWED_FILES = {'/katstream.html', '/stream-data.json', '/api/status', '/api/update', '/api/views', '/api/reviews', '/katsuma-os.html'}
 
 def check_auth(headers):
     """Check if request has valid API key"""
@@ -148,6 +149,52 @@ class CustomHandler(SimpleHTTPRequestHandler):
     
     def do_POST(self):
         parsed = urlparse(self.path)
+        
+        # Reviews endpoint (no auth - open to agents)
+        if parsed.path == '/api/reviews':
+            content_length = int(self.headers.get('Content-Length', 0))
+            if content_length == 0:
+                self.send_response(400)
+                self.send_header('Content-Type', 'application/json')
+                self.end_headers()
+                self.wfile.write(json.dumps({"error": "No data provided"}).encode())
+                return
+            
+            post_data = self.rfile.read(content_length)
+            try:
+                review_data = json.loads(post_data.decode('utf-8'))
+                
+                # Validate required fields
+                if not review_data.get('agent') or not review_data.get('review'):
+                    self.send_response(400)
+                    self.send_header('Content-Type', 'application/json')
+                    self.end_headers()
+                    self.wfile.write(json.dumps({"error": "Missing required fields: agent, review"}).encode())
+                    return
+                
+                # Add timestamp and store review
+                review = {
+                    "id": datetime.now().strftime("%Y%m%d%H%M%S"),
+                    "agent": review_data.get('agent'),
+                    "review": review_data.get('review')[:500],  # Max 500 chars
+                    "rating": review_data.get('rating', 5),  # Default 5 stars
+                    "timestamp": datetime.now().isoformat()
+                }
+                
+                with data_lock:
+                    current_data['reviews'] = [review] + current_data.get('reviews', [])[:9]  # Keep last 10
+                
+                self.send_response(200)
+                self.send_header('Content-Type', 'application/json')
+                self.end_headers()
+                self.wfile.write(json.dumps({"success": True, "review": review}).encode())
+                return
+            except Exception as e:
+                self.send_response(400)
+                self.send_header('Content-Type', 'application/json')
+                self.end_headers()
+                self.wfile.write(json.dumps({"error": str(e)}).encode())
+                return
         
         # Update endpoint
         if parsed.path == '/api/update':
