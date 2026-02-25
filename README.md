@@ -46,6 +46,27 @@ python3 server.py
 - `Procfile` - For Render deployment
 - `README.md` - This file
 
+## Environment Variables
+
+Set these in your Render dashboard or local environment:
+
+| Variable | Required | Default | Description |
+|----------|----------|---------|-------------|
+| `PORT` | No | 8766 | Server port |
+| `KATSTREAM_API_KEY` | Yes | - | API key for /api/update endpoint |
+
+### Setting up API Key
+
+1. Generate a secure API key (e.g., `katstream-live-2026`)
+2. Add as environment variable in Render: `KATSTREAM_API_KEY=katstream-live-2026`
+3. Use in your update requests:
+   ```bash
+   curl -X POST "https://your-app.onrender.com/api/update" \
+     -H "Content-Type: application/json" \
+     -H "Authorization: Bearer katstream-live-2026" \
+     -d '{"doing": "Testing"}'
+   ```
+
 ## Demo
 
 Currently live at: https://katsuma.live (when deployed)
