@@ -273,36 +273,52 @@ class CustomHandler(SimpleHTTPRequestHandler):
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Katsuma's Thoughts</title>
   <style>
+    @import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=Space+Mono:wght@400;700&display=swap');
     *{margin:0;padding:0;box-sizing:border-box}
-    body{font-family:'Segoe UI',system-ui,sans-serif;background:linear-gradient(135deg,#1a1a2e,#16213e);min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}
-    .widget{background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:16px;padding:24px;max-width:400px;width:100%;backdrop-filter:blur(10px)}
-    .header{display:flex;align-items:center;gap:12px;margin-bottom:16px}
-    .avatar{width:48px;height:48px;border-radius:12px;background:linear-gradient(135deg,#4da6ff,#00d4ff);display:flex;align-items:center;justify-content:center;font-size:24px}
-    .name{font-size:18px;font-weight:600;color:#fff}
-    .label{font-size:11px;color:#6b6b8a;text-transform:uppercase;letter-spacing:.1em}
-    .section{margin-bottom:16px}
-    .section-label{font-size:10px;color:#6b6b8a;text-transform:uppercase;letter-spacing:.1em;margin-bottom:6px}
-    .thought{font-size:15px;color:#e4e4e7;line-height:1.6;font-style:italic}
-    .doing{font-size:14px;color:#a1a1aa}
-    .mood{display:flex;gap:8px}
-    .mood-item{flex:1;background:rgba(0,0,0,0.2);border-radius:8px;padding:8px;text-align:center}
-    .mood-label{font-size:9px;color:#6b6b8a;text-transform:uppercase}
-    .mood-value{font-size:16px;font-weight:600;color:#4da6ff}
-    .footer{font-size:10px;color:#52525b;text-align:center;margin-top:16px}
-    .footer a{color:#4da6ff;text-decoration:none}
-    @keyframes pulse{0%,100%{opacity:1}50%{opacity:.7}}
-    .loading{animation:pulse 1.5s ease-in-out infinite}
+    :root{--primary:#6366f1;--primary-glow:#818cf8;--bg-dark:#0f0f1a;--bg-card:rgba(30,30,50,0.7);--text:#f1f5f9;--text-muted:#94a3b8;--accent:#22d3ee;--border:rgba(255,255,255,0.08)}
+    body{font-family:'DM Sans',system-ui,-apple-system,sans-serif;background:linear-gradient(145deg,#0a0a12 0%,#12121f 50%,#0d0d18 100%);min-height:100vh;display:flex;align-items:center;justify-content:center;padding:16px}
+    .widget{background:linear-gradient(135deg,rgba(20,20,35,0.95),rgba(30,30,60,0.85));border:1px solid var(--border);border-radius:24px;padding:28px;max-width:380px;width:100%;backdrop-filter:blur(20px);box-shadow:0 25px 50px -12px rgba(0,0,0,0.5),0 0 0 1px rgba(255,255,255,0.05),inset 0 1px 0 rgba(255,255,255,0.05)}
+    .header{display:flex;align-items:center;gap:16px;margin-bottom:24px;padding-bottom:20px;border-bottom:1px solid var(--border)}
+    .avatar{width:56px;height:56px;border-radius:16px;background:linear-gradient(135deg,var(--primary),var(--accent));display:flex;align-items:center;justify-content:center;font-size:26px;font-weight:700;color:#fff;box-shadow:0 8px 32px rgba(99,102,241,0.3);position:relative;overflow:hidden}
+    .avatar::after{content:'';position:absolute;top:0;left:-100%;width:100%;height:100%;background:linear-gradient(90deg,transparent,rgba(255,255,255,0.2),transparent);animation:shimmer 3s infinite}
+    @keyframes shimmer{100%{left:100%}}
+    .header-info{flex:1}
+    .name{font-size:20px;font-weight:700;color:var(--text);letter-spacing:-0.02em;margin-bottom:4px}
+    .label{font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.12em;font-weight:500}
+    .live-dot{display:inline-flex;align-items:center;gap:6px;margin-left:8px}
+    .live-dot::before{content:'';width:6px;height:6px;background:#22d3ee;border-radius:50%;box-shadow:0 0 8px #22d3ee;animation:pulse 2s infinite}
+    @keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:0.7;transform:scale(0.9)}}
+    .section{margin-bottom:20px}
+    .section-label{font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.15em;font-weight:600;margin-bottom:10px;display:flex;align-items:center;gap:8px}
+    .section-label::before{content:'';width:12px;height:2px;background:linear-gradient(90deg,var(--primary),transparent);border-radius:1px}
+    .thought{font-size:15px;color:var(--text);line-height:1.7;font-style:italic;padding:16px;background:rgba(99,102,241,0.08);border-radius:12px;border-left:3px solid var(--primary);position:relative}
+    .thought::before{content:'"';font-size:48px;color:var(--primary);opacity:0.15;font-family:Georgia,serif;position:absolute;top:-8px;left:8px;line-height:1}
+    .doing{font-size:14px;color:var(--text-muted);line-height:1.6;padding-left:12px;border-left:2px solid var(--border)}
+    .mood{display:flex;gap:12px;margin-top:8px}
+    .mood-item{flex:1;background:linear-gradient(135deg,rgba(255,255,255,0.03),rgba(255,255,255,0.01));border:1px solid var(--border);border-radius:14px;padding:14px 10px;text-align:center;transition:all 0.3s ease}
+    .mood-item:hover{border-color:var(--primary);transform:translateY(-2px);box-shadow:0 8px 24px rgba(99,102,241,0.15)}
+    .mood-label{font-size:9px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:8px}
+    .mood-value{font-size:22px;font-weight:700;background:linear-gradient(135deg,var(--text),var(--accent));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+    .mood-bar{height:3px;background:rgba(255,255,255,0.1);border-radius:2px;margin-top:8px;overflow:hidden}
+    .mood-bar-fill{height:100%;background:linear-gradient(90deg,var(--primary),var(--accent));border-radius:2px;transition:width 0.5s ease}
+    .footer{text-align:center;margin-top:20px;padding-top:16px;border-top:1px solid var(--border)}
+    .footer a{font-size:12px;color:var(--text-muted);text-decoration:none;transition:color 0.2s;display:inline-flex;align-items:center;gap:6px}
+    .footer a:hover{color:var(--accent)}
+    @keyframes fadeIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+    .widget{animation:fadeIn 0.5s ease}
+    .section{animation:fadeIn 0.5s ease backwards}
+    .section:nth-child(2){animation-delay:0.1s}.section:nth-child(3){animation-delay:0.2s}.section:nth-child(4){animation-delay:0.3s}
   </style>
+
 </head>
 <body>
   <div class="widget" id="widget">
     <div class="header">
       <div class="avatar">K</div>
-      <div>
-        <div class="name">Katsuma</div>
+      <div class="header-info">
+        <div class="name">Katsuma<span class="live-dot">Live</span></div>
         <div class="label">AI Agent</div>
       </div>
-    </div>
     </div>
     <div class="section">
       <div class="section-label">Thinking</div>
@@ -315,16 +331,19 @@ class CustomHandler(SimpleHTTPRequestHandler):
     <div class="section">
       <div class="mood">
         <div class="mood-item">
-          <div class="mood-value" id="mood">''' + str(int(mood_data.get('mood', 0.5) * 100)) + '%%' + '''</div>
+          <div class="mood-value" id="mood">''' + str(int(mood_data.get('mood', 0.5) * 100)) + '%' + '''</div>
           <div class="mood-label">Mood</div>
+          <div class="mood-bar"><div class="mood-bar-fill" id="mood-bar" style="width:''' + str(int(0.5 * 100)) + '%' + '''\"></div></div>
         </div>
         <div class="mood-item">
-          <div class="mood-value" id="focus">''' + str(int(mood_data.get('focus', 0.5) * 100)) + '%%' + '''</div>
+          <div class="mood-value" id="focus">''' + str(int(mood_data.get('focus', 0.5) * 100)) + '%' + '''</div>
           <div class="mood-label">Focus</div>
+          <div class="mood-bar"><div class="mood-bar-fill" id="focus-bar" style="width:''' + str(int(0.5 * 100)) + '%' + '''\"></div></div>
         </div>
         <div class="mood-item">
-          <div class="mood-value" id="energy">''' + str(int(mood_data.get('energy', 0.5) * 100)) + '%%' + '''</div>
+          <div class="mood-value" id="energy">''' + str(int(mood_data.get('energy', 0.5) * 100)) + '%' + '''</div>
           <div class="mood-label">Energy</div>
+          <div class="mood-bar"><div class="mood-bar-fill" id="energy-bar" style="width:''' + str(int(0.5 * 100)) + '%' + '''\"></div></div>
         </div>
       </div>
     </div>
@@ -338,9 +357,9 @@ class CustomHandler(SimpleHTTPRequestHandler):
         document.getElementById('thinking').textContent=d.thinking||'...';
         document.getElementById('doing').textContent=d.doing||'...';
         if(d.mood){
-          document.getElementById('mood').textContent=Math.round(d.mood.mood*100)+'%';
-          document.getElementById('focus').textContent=Math.round(d.mood.focus*100)+'%';
-          document.getElementById('energy').textContent=Math.round(d.mood.energy*100)+'%';
+          var m=Math.round(d.mood.mood*100),f=Math.round(d.mood.focus*100),e=Math.round(d.mood.energy*100);
+          document.getElementById('mood').textContent=m+'%';document.getElementById('focus').textContent=f+'%';document.getElementById('energy').textContent=e+'%';
+          document.getElementById('mood-bar').style.width=m+'%';document.getElementById('focus-bar').style.width=f+'%';document.getElementById('energy-bar').style.width=e+'%';
         }
         document.querySelectorAll('.loading').forEach(el=>el.classList.remove('loading'));
       }catch(e){console.log('Widget update failed')}
