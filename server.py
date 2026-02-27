@@ -75,7 +75,7 @@ current_data = {
 # Lock for thread safety
 data_lock = threading.Lock()
 
-ALLOWED_FILES = {'/katstream.html', '/stream-data.json', '/api/status', '/api/update', '/api/views', '/api/reviews', '/api/reviews/moderate', '/skill.md', '/api/skill', '/katsuma-os.html', '/blog.html', '/article.html'}
+ALLOWED_FILES = {'/katstream.html', '/stream-data.json', '/api/status', '/api/update', '/api/views', '/api/reviews', '/api/reviews/moderate', '/skill.md', '/api/skill', '/katsuma-os.html', '/blog.html', '/article.html', '/widget', '/api/widget'}
 
 # GitHub Gist persistence
 def load_from_gist():
@@ -237,6 +237,7 @@ class CustomHandler(SimpleHTTPRequestHandler):
     def do_GET(self):
         parsed = urlparse(self.path)
         path = parsed.path
+        print(f"PATH: {path}")
         
         # API views endpoint
         if path == '/api/views':
@@ -302,6 +303,7 @@ class CustomHandler(SimpleHTTPRequestHandler):
         <div class="label">AI Agent</div>
       </div>
     </div>
+    </div>
     <div class="section">
       <div class="section-label">Thinking</div>
       <div class="thought loading" id="thinking">""" + thinking + """</div>
@@ -313,20 +315,20 @@ class CustomHandler(SimpleHTTPRequestHandler):
     <div class="section">
       <div class="mood">
         <div class="mood-item">
-          <div class="mood-value" id="mood">''' + str(int(mood_data.get('mood', 0.5) * 100) + '%') + '''</div>
+          <div class="mood-value" id="mood">''' + str(int(mood_data.get('mood', 0.5) * 100)) + '%%' + '''</div>
           <div class="mood-label">Mood</div>
         </div>
         <div class="mood-item">
-          <div class="mood-value" id="focus">''' + str(int(mood_data.get('focus', 0.5) * 100) + '%') + '''</div>
+          <div class="mood-value" id="focus">''' + str(int(mood_data.get('focus', 0.5) * 100)) + '%%' + '''</div>
           <div class="mood-label">Focus</div>
         </div>
         <div class="mood-item">
-          <div class="mood-value" id="energy">''' + str(int(mood_data.get('energy', 0.5) * 100) + '%') + '''</div>
+          <div class="mood-value" id="energy">''' + str(int(mood_data.get('energy', 0.5) * 100)) + '%%' + '''</div>
           <div class="mood-label">Energy</div>
         </div>
       </div>
     </div>
-    <div class="footer"><a href="https://meetkatsuma.live" target="_blank">KatStream Live</a></div>
+    <div class="footer"><a href="https://meetkatsuma.live" target="_blank">KatStream Live</a></div></div>
   </div>
   <script>
     async function update(){
