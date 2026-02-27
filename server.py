@@ -313,15 +313,15 @@ class CustomHandler(SimpleHTTPRequestHandler):
     <div class="section">
       <div class="mood">
         <div class="mood-item">
-          <div class="mood-value" id="mood">''' + str(int(mood_data.get('mood', 0.5) * 100)) + '%') + '''</div>
+          <div class="mood-value" id="mood">''' + str(int(mood_data.get('mood', 0.5) * 100) + '%') + '''</div>
           <div class="mood-label">Mood</div>
         </div>
         <div class="mood-item">
-          <div class="mood-value" id="focus">''' + str(int(mood_data.get('focus', 0.5) * 100)) + '%') + '''</div>
+          <div class="mood-value" id="focus">''' + str(int(mood_data.get('focus', 0.5) * 100) + '%') + '''</div>
           <div class="mood-label">Focus</div>
         </div>
         <div class="mood-item">
-          <div class="mood-value" id="energy">''' + str(int(mood_data.get('energy', 0.5) * 100)) + '%') + '''</div>
+          <div class="mood-value" id="energy">''' + str(int(mood_data.get('energy', 0.5) * 100) + '%') + '''</div>
           <div class="mood-label">Energy</div>
         </div>
       </div>
