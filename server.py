@@ -4,6 +4,7 @@
 import json
 import os
 import gzip
+import urllib.request
 from http.server import HTTPServer, SimpleHTTPRequestHandler
 from datetime import datetime
 from urllib.parse import urlparse, parse_qs
@@ -15,22 +16,17 @@ SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 # Auth - set via KATSTREAM_API_KEY env var
 API_KEY = os.environ.get('KATSTREAM_API_KEY', 'katstream-internal-change-me')
 
-# Backup file path (persistent storage)
+# GitHub Gist for persistent backup
+GITHUB_TOKEN = os.environ.get('GITHUB_TOKEN', None)
+GIST_ID_FILE = os.path.join(SCRIPT_DIR, '.gist_id')
+
+# Backup file path (local fallback)
 BACKUP_FILE = os.environ.get('KATSTREAM_BACKUP_FILE', os.path.join(SCRIPT_DIR, 'data', 'backup.json'))
 
 # Ensure data directory exists
 os.makedirs(os.path.dirname(BACKUP_FILE), exist_ok=True)
 
-# Load backup on startup if exists
-if os.path.exists(BACKUP_FILE):
-    try:
-        with open(BACKUP_FILE, 'r') as f:
-            current_data = json.load(f)
-            print(f"Loaded backup from {BACKUP_FILE}")
-    except Exception as e:
-        print(f"Could not load backup: {e}")
-
-# In-memory data store
+# In-memory data store (defaults, will be overwritten by load_backup if successful)
 current_data = {
     "doing": "Waiting for updates...",
     "thinking": "KatStream is live!",
@@ -81,28 +77,136 @@ data_lock = threading.Lock()
 
 ALLOWED_FILES = {'/katstream.html', '/stream-data.json', '/api/status', '/api/update', '/api/views', '/api/reviews', '/api/reviews/moderate', '/skill.md', '/api/skill', '/katsuma-os.html', '/blog.html', '/article.html'}
 
+# GitHub Gist persistence
+def load_from_gist():
+    """Load data from GitHub Gist (persistent across restarts)"""
+    global current_data
+    
+    if not GITHUB_TOKEN:
+        print("No GITHUB_TOKEN - using local backup")
+        return load_backup_local()
+    
+    gist_id = None
+    if os.path.exists(GIST_ID_FILE):
+        try:
+            with open(GIST_ID_FILE, 'r') as f:
+                gist_id = f.read().strip()
+        except:
+            pass
+    
+    # Try to load from existing Gist
+    if gist_id:
+        try:
+            req = urllib.request.Request(
+                f"https://api.github.com/gists/{gist_id}",
+                headers={"Authorization": f"token {GITHUB_TOKEN}", "Accept": "application/vnd.github+json"}
+            )
+            with urllib.request.urlopen(req, timeout=10) as response:
+                gist_data = json.loads(response.read().decode())
+                files = gist_data.get('files', {})
+                if 'katstream-data.json' in files:
+                    content = files['katstream-data.json']['content']
+                    current_data = json.loads(content)
+                    print(f"Loaded data from Gist {gist_id}")
+                    return True
+        except Exception as e:
+            print(f"Failed to load from Gist: {e}")
+    
+    # No existing Gist - load local and create Gist on first save
+    print("No existing Gist - will create on first save")
+    load_backup_local()
+    return False
+
+def save_to_gist():
+    """Save data to GitHub Gist (persistent across restarts)"""
+    if not GITHUB_TOKEN:
+        return save_backup_local()
+    
+    gist_id = None
+    if os.path.exists(GIST_ID_FILE):
+        try:
+            with open(GIST_ID_FILE, 'r') as f:
+                gist_id = f.read().strip()
+        except:
+            pass
+    
+    with data_lock:
+        backup_data = current_data.copy()
+        # Don't save views/activity that reset on restart
+        backup_data['views'] = 0
+        backup_data['views_today'] = 0
+        backup_data['article_views'] = {}
+        backup_data['activity'] = []
+    
+    payload = {
+        "description": "KatStream persistent backup",
+        "public": False,
+        "files": {
+            "katstream-data.json": {"content": json.dumps(backup_data, indent=2)}
+        }
+    }
+    
+    try:
+        data = json.dumps(payload).encode('utf-8')
+        if gist_id:
+            # Update existing Gist
+            req = urllib.request.Request(
+                f"https://api.github.com/gists/{gist_id}",
+                data=data,
+                method='PATCH',
+                headers={"Authorization": f"token {GITHUB_TOKEN}", "Accept": "application/vnd.github+json", "Content-Type": "application/json"}
+            )
+        else:
+            # Create new Gist
+            req = urllib.request.Request(
+                "https://api.github.com/gists",
+                data=data,
+                method='POST',
+                headers={"Authorization": f"token {GITHUB_TOKEN}", "Accept": "application/vnd.github+json", "Content-Type": "application/json"}
+            )
+        
+        with urllib.request.urlopen(req, timeout=10) as response:
+            result = json.loads(response.read().decode())
+            new_gist_id = result.get('id')
+            if new_gist_id:
+                # Save Gist ID for future use
+                with open(GIST_ID_FILE, 'w') as f:
+                    f.write(new_gist_id)
+                print(f"Saved to new Gist: {new_gist_id}")
+            return True
+    except Exception as e:
+        print(f"Gist save failed: {e}")
+        return save_backup_local()
+
 # Backup functions
 def save_backup():
-    """Save current data to compressed backup file"""
+    """Save current data - tries Gist first, falls back to local"""
+    return save_to_gist()
+
+def save_backup_local():
+    """Save current data to compressed backup file (local fallback)"""
     try:
         with data_lock:
-            # Don't save views/activity that reset on restart
             backup_data = current_data.copy()
             backup_data['views'] = 0
             backup_data['views_today'] = 0
             backup_data['article_views'] = {}
             backup_data['activity'] = []
         
-        # Save as compressed JSON
+        os.makedirs(os.path.dirname(BACKUP_FILE), exist_ok=True)
         with gzip.open(BACKUP_FILE + '.gz', 'wt', encoding='utf-8') as f:
             json.dump(backup_data, f, indent=2)
         return True
     except Exception as e:
-        print(f"Backup failed: {e}")
+        print(f"Local backup failed: {e}")
         return False
 
 def load_backup():
-    """Load data from compressed backup file"""
+    """Load data - tries Gist first, falls back to local"""
+    return load_from_gist()
+
+def load_backup_local():
+    """Load data from compressed backup file (local fallback)"""
     global current_data
     gz_file = BACKUP_FILE + '.gz'
     try:
@@ -111,13 +215,16 @@ def load_backup():
                 current_data = json.load(f)
             return True
     except Exception as e:
-        print(f"Load backup failed: {e}")
+        print(f"Local load backup failed: {e}")
     return False
 
 def check_auth(headers):
     """Check if request has valid API key"""
     auth_header = headers.get('Authorization', '')
     return auth_header == f'Bearer {API_KEY}'
+
+# Load backup on startup - tries Gist first, then local
+load_backup()
 
 def send_error(self, code):
     self.send_response(code)
