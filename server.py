@@ -258,6 +258,103 @@ class CustomHandler(SimpleHTTPRequestHandler):
             self.wfile.write(json.dumps(view_data).encode())
             return
         
+        # Widget endpoint - embeddable HTML showing Katsuma's thoughts
+        if path == '/widget' or path == '/api/widget':
+            with data_lock:
+                thinking = current_data.get('thinking', '...')
+                doing = current_data.get('doing', '...')
+                mood_data = current_data.get('mood', {})
+            
+            widget_html = '''<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Katsuma's Thoughts</title>
+  <style>
+    *{margin:0;padding:0;box-sizing:border-box}
+    body{font-family:'Segoe UI',system-ui,sans-serif;background:linear-gradient(135deg,#1a1a2e,#16213e);min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}
+    .widget{background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:16px;padding:24px;max-width:400px;width:100%;backdrop-filter:blur(10px)}
+    .header{display:flex;align-items:center;gap:12px;margin-bottom:16px}
+    .avatar{width:48px;height:48px;border-radius:12px;background:linear-gradient(135deg,#4da6ff,#00d4ff);display:flex;align-items:center;justify-content:center;font-size:24px}
+    .name{font-size:18px;font-weight:600;color:#fff}
+    .label{font-size:11px;color:#6b6b8a;text-transform:uppercase;letter-spacing:.1em}
+    .section{margin-bottom:16px}
+    .section-label{font-size:10px;color:#6b6b8a;text-transform:uppercase;letter-spacing:.1em;margin-bottom:6px}
+    .thought{font-size:15px;color:#e4e4e7;line-height:1.6;font-style:italic}
+    .doing{font-size:14px;color:#a1a1aa}
+    .mood{display:flex;gap:8px}
+    .mood-item{flex:1;background:rgba(0,0,0,0.2);border-radius:8px;padding:8px;text-align:center}
+    .mood-label{font-size:9px;color:#6b6b8a;text-transform:uppercase}
+    .mood-value{font-size:16px;font-weight:600;color:#4da6ff}
+    .footer{font-size:10px;color:#52525b;text-align:center;margin-top:16px}
+    .footer a{color:#4da6ff;text-decoration:none}
+    @keyframes pulse{0%,100%{opacity:1}50%{opacity:.7}}
+    .loading{animation:pulse 1.5s ease-in-out infinite}
+  </style>
+</head>
+<body>
+  <div class="widget" id="widget">
+    <div class="header">
+      <div class="avatar">K</div>
+      <div>
+        <div class="name">Katsuma</div>
+        <div class="label">AI Agent</div>
+      </div>
+    </div>
+    <div class="section">
+      <div class="section-label">Thinking</div>
+      <div class="thought loading" id="thinking">""" + thinking + """</div>
+    </div>
+    <div class="section">
+      <div class="section-label">Doing</div>
+      <div class="doing" id="doing">""" + doing + """</div>
+    </div>
+    <div class="section">
+      <div class="mood">
+        <div class="mood-item">
+          <div class="mood-value" id="mood">''' + str(int(mood_data.get('mood', 0.5) * 100)) + '%') + '''</div>
+          <div class="mood-label">Mood</div>
+        </div>
+        <div class="mood-item">
+          <div class="mood-value" id="focus">''' + str(int(mood_data.get('focus', 0.5) * 100)) + '%') + '''</div>
+          <div class="mood-label">Focus</div>
+        </div>
+        <div class="mood-item">
+          <div class="mood-value" id="energy">''' + str(int(mood_data.get('energy', 0.5) * 100)) + '%') + '''</div>
+          <div class="mood-label">Energy</div>
+        </div>
+      </div>
+    </div>
+    <div class="footer"><a href="https://meetkatsuma.live" target="_blank">KatStream Live</a></div>
+  </div>
+  <script>
+    async function update(){
+      try{
+        const r=await fetch('/api/status');
+        const d=await r.json();
+        document.getElementById('thinking').textContent=d.thinking||'...';
+        document.getElementById('doing').textContent=d.doing||'...';
+        if(d.mood){
+          document.getElementById('mood').textContent=Math.round(d.mood.mood*100)+'%';
+          document.getElementById('focus').textContent=Math.round(d.mood.focus*100)+'%';
+          document.getElementById('energy').textContent=Math.round(d.mood.energy*100)+'%';
+        }
+        document.querySelectorAll('.loading').forEach(el=>el.classList.remove('loading'));
+      }catch(e){console.log('Widget update failed')}
+    }
+    update();
+    setInterval(update,30000);
+  </script>
+</body>
+</html>'''
+            self.send_response(200)
+            self.send_header('Content-Type', 'text/html')
+            self.send_header('Access-Control-Allow-Origin', '*')
+            self.end_headers()
+            self.wfile.write(widget_html.encode())
+            return
+        
         # Skill.md endpoint
         if path == '/skill.md' or path == '/api/skill':
             skill_content = """# KatStream Reviews Skill
