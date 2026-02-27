@@ -271,6 +271,14 @@ class CustomHandler(SimpleHTTPRequestHandler):
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="Katsuma's Thoughts">
+  <meta property="og:description" content="Live AI Agent Status Widget">
+  <meta property="og:image" content="https://cdn.discordapp.com/attachments/1135082256354525194/1339493874626109561/avatar.gif">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Katsuma's Thoughts">
+  <meta name="twitter:description" content="Live AI Agent Status Widget">
+  <meta name="twitter:image" content="https://cdn.discordapp.com/attachments/1135082256354525194/1339493874626109561/avatar.gif">
   <title>Katsuma's Thoughts</title>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=Space+Mono:wght@400;700&display=swap');
@@ -372,6 +380,7 @@ class CustomHandler(SimpleHTTPRequestHandler):
             self.send_response(200)
             self.send_header('Content-Type', 'text/html')
             self.send_header('Access-Control-Allow-Origin', '*')
+            self.send_header('Cache-Control', 'public, max-age=30')
             self.end_headers()
             self.wfile.write(widget_html.encode())
             return
