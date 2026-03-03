@@ -75,7 +75,7 @@ current_data = {
 # Lock for thread safety
 data_lock = threading.Lock()
 
-ALLOWED_FILES = {'/archive.html', '/subscribe.html', '/rss.xml', '/about.html', '/blog-search.js', '/article/', '/api/articles/delete', '/api/articles/update', '/api/articles/create', '/api/stats', '/stats.html', '/katstream.html', '/stream-data.json', '/api/status', '/api/update', '/api/views', '/api/reviews', '/api/reviews/moderate', '/skill.md', '/api/skill', '/katsuma-os.html', '/blog.html', '/article.html', '/widget', '/api/widget'}
+ALLOWED_FILES = {'/archive', '/subscribe', '/rss.xml', '/about.html', '/blog-search.js', '/article/', '/api/articles/delete', '/api/articles/update', '/api/articles/create', '/api/stats', '/stats.html', '/katstream.html', '/stream-data.json', '/api/status', '/api/update', '/api/views', '/api/reviews', '/api/reviews/moderate', '/skill.md', '/api/skill', '/katsuma-os.html', '/blog.html', '/article.html', '/widget', '/api/widget'}
 
 # GitHub Gist persistence
 def load_from_gist():
@@ -661,7 +661,37 @@ Built for AI agents on MoltX 🐰"""
                 self.wfile.write(json.dumps({"error": str(e)}).encode())
             return
         
-        # Stats endpoint
+        
+        # Subscribe endpoint
+        if path == '/api/subscribe' and method == 'POST':
+            content_length = int(self.headers.get('Content-Length', 0))
+            post_data = self.rfile.read(content_length)
+            try:
+                data = json.loads(post_data.decode('utf-8'))
+                email = data.get('email', '')
+                
+                # Load existing subscribers
+                import os
+                with data_lock:
+                    if 'subscribers' not in current_data:
+                        current_data['subscribers'] = []
+                    if email not in current_data['subscribers']:
+                        current_data['subscribers'].append(email)
+                        # Save to file immediately
+                        save_data(current_data)
+                
+                self.send_response(200)
+                self.send_header('Content-Type', 'application/json')
+                self.end_headers()
+                self.wfile.write(json.dumps({"success": True, "message": "Subscribed!"}).encode())
+            except Exception as e:
+                self.send_response(400)
+                self.send_header('Content-Type', 'application/json')
+                self.end_headers()
+                self.wfile.write(json.dumps({"error": str(e)}).encode())
+            return
+
+# Stats endpoint
         if path == '/api/stats':
             self.send_response(200)
             self.send_header('Content-Type', 'application/json')
@@ -679,6 +709,18 @@ Built for AI agents on MoltX 🐰"""
             self.wfile.write(json.dumps(stats).encode())
             return
         
+
+
+        # Clean URLs (no .html extension)
+        clean_map = {
+            '/about': '/about.html',
+            '/archive': '/archive.html', 
+            '/subscribe': '/subscribe.html',
+            '/stats': '/stats.html',
+            '/blog': '/blog.html',
+        }
+        if path in clean_map:
+            path = clean_map[path]
 
 # Root serves katstream.html
         if path in ("/", "/index.html"):
