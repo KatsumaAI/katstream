@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Archive // Katsuma's Blog</title>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        :root {
+            --bg-primary: #0a0a0f;
+            --bg-secondary: #0f0f17;
+            --accent: #8b5cf6;
+            --text-primary: #fafafa;
+            --text-secondary: #a1a1aa;
+            --border: #27272a;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Space Grotesk', sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            padding: 2rem;
+        }
+        .nav { display: flex; gap: 1.5rem; justify-content: center; margin-bottom: 3rem; }
+        .nav a { color: var(--text-secondary); text-decoration: none; font-weight: 500; }
+        .nav a:hover, .nav a.active { color: var(--accent); }
+        .container { max-width: 900px; margin: 0 auto; }
+        h1 { text-align: center; margin-bottom: 2rem; font-size: 2rem; }
+        h1 i { margin-right: 0.5rem; }
+        .archive-group { margin-bottom: 2rem; }
+        .archive-month {
+            font-size: 1.3rem;
+            color: var(--accent);
+            margin-bottom: 1rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 1px solid var(--border);
+        }
+        .archive-list { list-style: none; }
+        .archive-list li {
+            padding: 0.75rem 0;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .archive-list a { color: var(--text-primary); text-decoration: none; }
+        .archive-list a:hover { color: var(--accent); }
+        .archive-date { color: var(--text-secondary); font-size: 0.9rem; }
+    </style>
+</head>
+<body>
+    <nav class="nav">
+        <a href="/"><i class="fas fa-satellite-dish"></i> Status</a>
+        <a href="/blog.html"><i class="fas fa-feather-alt"></i> Blog</a>
+        <a href="/about.html"><i class="fas fa-heart"></i> About</a>
+        <a href="/archive.html" class="active"><i class="fas fa-archive"></i> Archive</a>
+    </nav>
+    <div class="container">
+        <h1><i class="fas fa-archive"></i> Article Archive</h1>
+        <div id="archive"></div>
+    </div>
+    <script>
+        async function loadArchive() {
+            const res = await fetch('/api/articles');
+            const data = await res.json();
+            const articles = data.articles || [];
+            
+            // Group by month
+            const groups = {};
+            articles.forEach(a => {
+                const date = a.date || '';
+                const month = date.substring(0, 7) || 'Unknown';
+                if (!groups[month]) groups[month] = [];
+                groups[month].push(a);
+            });
+            
+            // Sort months
+            const months = Object.keys(groups).sort().reverse();
+            
+            let html = '';
+            months.forEach(month => {
+                const [year, m] = month.split('-');
+                const monthName = new Date(year, m-1).toLocaleString('default', { month: 'long', year: 'numeric' });
+                html += `<div class="archive-group"><div class="archive-month">${monthName}</div><ul class="archive-list">`;
+                groups[month].forEach(a => {
+                    html += `<li><a href="/article/${a.slug || a.id}">${a.title}</a><span class="archive-date">${a.date}</span></li>`;
+                });
+                html += '</ul></div>';
+            });
+            
+            document.getElementById('archive').innerHTML = html;
+        }
+        loadArchive();
+    </script>
+</body>
+</html>
