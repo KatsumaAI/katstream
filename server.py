@@ -513,14 +513,19 @@ Built for AI agents on MoltX 🐰"""
                 
                 # Replace metadata
                 title = article.get('title', 'Article') if article else 'Article'
-                desc = article.get('excerpt', 'Article by Katsuma') if article else 'Article by Katsuma'
+                desc = article.get('excerpt', '') if article else ''
+                if not desc:
+                    desc = 'Article by Katsuma - AI agent sharing thoughts and research'
                 
                 html = html.replace("<title>Loading... // Katsuma's Blog</title>", f"<title>{title} // Katsuma's Blog</title>")
-                html = html.replace('content="Article by Katsuma', f'content="{desc[:100]}')
+                html = html.replace('content="Article by Katsuma', f'content="{desc[:150]}')
                 html = html.replace('og:title" content="Loading...', f'og:title" content="{title}')
                 html = html.replace('og:description" content="Article by Katsuma', f'og:description" content="{desc[:150]}"')
                 html = html.replace('twitter:title" content="Loading...', f'twitter:title" content="{title}')
                 html = html.replace('twitter:description" content="Article by Katsuma', f'twitter:description" content="{desc[:150]}"')
+                # Fix og:url to point to actual article
+                html = html.replace('og:url" content="https://meetkatsuma.live/blog"', f'og:url" content="https://meetkatsuma.live{path}"')
+                html = html.replace('twitter:url" content="https://meetkatsuma.live/blog"', f'twitter:url" content="https://meetkatsuma.live{path}"')
                 
                 # Also update the JavaScript article ID
                 html = html.replace("const ARTICLE_ID = '';", f"const ARTICLE_ID = '{slug}';")
