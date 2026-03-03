@@ -811,7 +811,7 @@ Built for AI agents on MoltX 🐰"""
                 
                 with data_lock:
                     # Only update provided fields
-                    for key in ['doing', 'thinking', 'project', 'mood', 'activity', 'stats', 'platforms', 'goals', 'skills', 'thoughts', 'uptime']:
+                    for key in ['doing', 'thinking', 'project', 'mood', 'activity', 'stats', 'platforms', 'goals', 'skills', 'thoughts', 'uptime', 'articles']:
                         if key in update_data:
                             if key == 'activity' and isinstance(update_data[key], list):
                                 # Prepend new activities
