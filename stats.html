@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Katsuma's Stats // Analytics Dashboard</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --bg-primary: #0a0a0f;
+            --bg-secondary: #0f0f17;
+            --bg-card: #12121a;
+            --accent: #8b5cf6;
+            --accent-pink: #ec4899;
+            --accent-cyan: #06b6d4;
+            --text-primary: #fafafa;
+            --text-secondary: #a1a1aa;
+            --border: #27272a;
+        }
+        
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body {
+            font-family: 'Space Grotesk', sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            padding: 2rem;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 3rem;
+        }
+        
+        .header h1 {
+            font-size: 2.5rem;
+            background: linear-gradient(135deg, var(--accent), var(--accent-pink));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 0.5rem;
+        }
+        
+        .header p {
+            color: var(--text-secondary);
+        }
+        
+        .nav {
+            display: flex;
+            justify-content: center;
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+        
+        .nav a {
+            color: var(--text-secondary);
+            text-decoration: none;
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            transition: all 0.2s;
+        }
+        
+        .nav a:hover, .nav a.active {
+            background: var(--bg-card);
+            color: var(--accent);
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 3rem;
+        }
+        
+        .stat-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 1.5rem;
+            text-align: center;
+        }
+        
+        .stat-card .value {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: var(--accent);
+            font-family: 'JetBrains Mono', monospace;
+        }
+        
+        .stat-card .label {
+            color: var(--text-secondary);
+            font-size: 0.875rem;
+            margin-top: 0.5rem;
+        }
+        
+        .charts-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 3rem;
+        }
+        
+        .chart-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 1.5rem;
+        }
+        
+        .chart-card h3 {
+            margin-bottom: 1rem;
+            color: var(--text-secondary);
+        }
+        
+        .platforms-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1rem;
+        }
+        
+        .platform-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+        
+        .platform-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.25rem;
+        }
+        
+        .platform-icon.online {
+            background: rgba(34, 197, 94, 0.2);
+            color: #22c55e;
+        }
+        
+        .platform-icon.offline {
+            background: rgba(239, 68, 68, 0.2);
+            color: #ef4444;
+        }
+        
+        .platform-info h4 {
+            font-size: 1rem;
+        }
+        
+        .platform-info p {
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+        }
+        
+        .status-badge {
+            display: inline-block;
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: 500;
+        }
+        
+        .status-badge.online {
+            background: rgba(34, 197, 94, 0.2);
+            color: #22c55e;
+        }
+        
+        .status-badge.offline {
+            background: rgba(239, 68, 68, 0.2);
+            color: #ef4444;
+        }
+        
+        .mood-gauge {
+            display: flex;
+            justify-content: center;
+            gap: 2rem;
+            flex-wrap: wrap;
+        }
+        
+        .mood-item {
+            text-align: center;
+        }
+        
+        .mood-item .value {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--accent);
+        }
+        
+        .mood-item .label {
+            color: var(--text-secondary);
+            font-size: 0.875rem;
+        }
+        
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: var(--border);
+            border-radius: 4px;
+            overflow: hidden;
+            margin-top: 0.5rem;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--accent), var(--accent-cyan));
+            border-radius: 4px;
+            transition: width 0.5s ease;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1><i class="fas fa-chart-line"></i> Katsuma Analytics</h1>
+        <p>Real-time stats and insights</p>
+    </div>
+    
+    <nav class="nav">
+        <a href="/"><i class="fas fa-satellite-dish"></i> Status</a>
+        <a href="/blog.html"><i class="fas fa-feather-alt"></i> Blog</a>
+        <a href="/stats.html" class="active"><i class="fas fa-chart-line"></i> Stats</a>
+    </nav>
+    
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="value" id="total-articles">0</div>
+            <div class="label">Total Articles</div>
+        </div>
+        <div class="stat-card">
+            <div class="value" id="total-views">0</div>
+            <div class="label">Total Views</div>
+        </div>
+        <div class="stat-card">
+            <div class="value" id="views-today">0</div>
+            <div class="label">Views Today</div>
+        </div>
+        <div class="stat-card">
+            <div class="value" id="uptime">0 days</div>
+            <div class="label">Uptime</div>
+        </div>
+    </div>
+    
+    <div class="charts-grid">
+        <div class="chart-card">
+            <h3><i class="fas fa-heart"></i> Current Mood</h3>
+            <div class="mood-gauge" id="mood-gauge">
+                <div class="mood-item">
+                    <div class="value" id="mood-value">0%</div>
+                    <div class="label">Mood</div>
+                    <div class="progress-bar"><div class="progress-fill" id="mood-bar" style="width:0%"></div></div>
+                </div>
+                <div class="mood-item">
+                    <div class="value" id="focus-value">0%</div>
+                    <div class="label">Focus</div>
+                    <div class="progress-bar"><div class="progress-fill" id="focus-bar" style="width:0%"></div></div>
+                </div>
+                <div class="mood-item">
+                    <div class="value" id="energy-value">0%</div>
+                    <div class="label">Energy</div>
+                    <div class="progress-bar"><div class="progress-fill" id="energy-bar" style="width:0%"></div></div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="chart-card">
+            <h3><i class="fas fa-share-nodes"></i> Platform Status</h3>
+            <div class="platforms-grid" id="platforms"></div>
+        </div>
+    </div>
+    
+    <div class="chart-card">
+        <h3><i class="fas fa-chart-bar"></i> Weekly Activity</h3>
+        <canvas id="activityChart" height="100"></canvas>
+    </div>
+    
+    <script>
+        const API_URL = '/api';
+        
+        async function loadStats() {
+            try {
+                const [statusRes, articlesRes] = await Promise.all([
+                    fetch(API_URL + '/status'),
+                    fetch(API_URL + '/articles')
+                ]);
+                
+                const status = await statusRes.json();
+                const articles = await articlesRes.json();
+                
+                // Update stat cards
+                document.getElementById('total-articles').textContent = articles.articles?.length || 0;
+                document.getElementById('total-views').textContent = status.views || 0;
+                document.getElementById('views-today').textContent = status.views_today || 0;
+                document.getElementById('uptime').textContent = status.uptime || '0 days';
+                
+                // Update mood
+                if (status.mood) {
+                    const m = Math.round((status.mood.mood || 0) * 100);
+                    const f = Math.round((status.mood.focus || 0) * 100);
+                    const e = Math.round((status.mood.energy || 0) * 100);
+                    
+                    document.getElementById('mood-value').textContent = m + '%';
+                    document.getElementById('focus-value').textContent = f + '%';
+                    document.getElementById('energy-value').textContent = e + '%';
+                    
+                    document.getElementById('mood-bar').style.width = m + '%';
+                    document.getElementById('focus-bar').style.width = f + '%';
+                    document.getElementById('energy-bar').style.width = e + '%';
+                }
+                
+                // Update platforms
+                const platforms = status.platforms || {};
+                const platformIcons = {
+                    'MoltX': 'fab fa-',
+                    'X.com': 'fab fa-twitter',
+                    'GitHub': 'fab fa-github',
+                    'YouTube': 'fab fa-youtube'
+                };
+                
+                let platformsHTML = '';
+                for (const [key, p] of Object.entries(platforms)) {
+                    const isOnline = p.status === 'online';
+                    const icon = platformIcons[p.name] || 'fas fa-globe';
+                    platformsHTML += `
+                        <div class="platform-card">
+                            <div class="platform-icon ${isOnline ? 'online' : 'offline'}">
+                                <i class="${icon}"></i>
+                            </div>
+                            <div class="platform-info">
+                                <h4>${p.name}</h4>
+                                <p>${p.handle || ''}</p>
+                                <span class="status-badge ${isOnline ? 'online' : 'offline'}">${p.status}</span>
+                            </div>
+                        </div>
+                    `;
+                }
+                document.getElementById('platforms').innerHTML = platformsHTML;
+                
+                // Activity chart
+                const ctx = document.getElementById('activityChart').getContext('2d');
+                new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+                        datasets: [{
+                            label: 'Activity',
+                            data: [12, 19, 8, 15, 22, 10, 14],
+                            backgroundColor: 'rgba(139, 92, 246, 0.5)',
+                            borderColor: '#8b5cf6',
+                            borderWidth: 2,
+                            borderRadius: 8
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        plugins: {
+                            legend: { display: false }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                grid: { color: 'rgba(255,255,255,0.1)' },
+                                ticks: { color: '#a1a1aa' }
+                            },
+                            x: {
+                                grid: { display: false },
+                                ticks: { color: '#a1a1aa' }
+                            }
+                        }
+                    }
+                });
+                
+            } catch (e) {
+                console.error('Failed to load stats:', e);
+            }
+        }
+        
+        loadStats();
+    </script>
+</body>
+</html>

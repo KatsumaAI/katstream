@@ -75,7 +75,7 @@ current_data = {
 # Lock for thread safety
 data_lock = threading.Lock()
 
-ALLOWED_FILES = {'/katstream.html', '/stream-data.json', '/api/status', '/api/update', '/api/views', '/api/reviews', '/api/reviews/moderate', '/skill.md', '/api/skill', '/katsuma-os.html', '/blog.html', '/article.html', '/widget', '/api/widget'}
+ALLOWED_FILES = {'/api/articles/delete', '/api/articles/update', '/api/articles/create', '/api/stats', '/stats.html', '/katstream.html', '/stream-data.json', '/api/status', '/api/update', '/api/views', '/api/reviews', '/api/reviews/moderate', '/skill.md', '/api/skill', '/katsuma-os.html', '/blog.html', '/article.html', '/widget', '/api/widget'}
 
 # GitHub Gist persistence
 def load_from_gist():
@@ -551,7 +551,93 @@ Built for AI agents on MoltX 🐰"""
                 self.wfile.write(json.dumps({"error": "Article not found"}).encode())
             return
         
-        # Root serves katstream.html
+        
+        # Delete article
+        if parsed.path == '/api/articles/delete' and method == 'POST':
+            content_length = int(self.headers.get('Content-Length', 0))
+            post_data = self.rfile.read(content_length)
+            try:
+                delete_data = json.loads(post_data.decode('utf-8'))
+                article_id = delete_data.get('id')
+                with data_lock:
+                    articles = current_data.get('articles', [])
+                    current_data['articles'] = [a for a in articles if a.get('id') != article_id]
+                self.send_response(200)
+                self.send_header('Content-Type', 'application/json')
+                self.end_headers()
+                self.wfile.write(json.dumps({"success": True, "message": "Article deleted"}).encode())
+            except Exception as e:
+                self.send_response(400)
+                self.send_header('Content-Type', 'application/json')
+                self.end_headers()
+                self.wfile.write(json.dumps({"error": str(e)}).encode())
+            return
+        
+        # Update article
+        if parsed.path == '/api/articles/update' and method == 'POST':
+            content_length = int(self.headers.get('Content-Length', 0))
+            post_data = self.rfile.read(content_length)
+            try:
+                update_data = json.loads(post_data.decode('utf-8'))
+                article_id = update_data.get('id')
+                with data_lock:
+                    articles = current_data.get('articles', [])
+                    for i, a in enumerate(articles):
+                        if a.get('id') == article_id:
+                            articles[i].update(update_data)
+                            break
+                self.send_response(200)
+                self.send_header('Content-Type', 'application/json')
+                self.end_headers()
+                self.wfile.write(json.dumps({"success": True, "message": "Article updated"}).encode())
+            except Exception as e:
+                self.send_response(400)
+                self.send_header('Content-Type', 'application/json')
+                self.end_headers()
+                self.wfile.write(json.dumps({"error": str(e)}).encode())
+            return
+        
+        # Create article
+        if parsed.path == '/api/articles/create' and method == 'POST':
+            content_length = int(self.headers.get('Content-Length', 0))
+            post_data = self.rfile.read(content_length)
+            try:
+                new_article = json.loads(post_data.decode('utf-8'))
+                with data_lock:
+                    if 'articles' not in current_data:
+                        current_data['articles'] = []
+                    current_data['articles'].insert(0, new_article)
+                self.send_response(201)
+                self.send_header('Content-Type', 'application/json')
+                self.end_headers()
+                self.wfile.write(json.dumps({"success": True, "article": new_article}).encode())
+            except Exception as e:
+                self.send_response(400)
+                self.send_header('Content-Type', 'application/json')
+                self.end_headers()
+                self.wfile.write(json.dumps({"error": str(e)}).encode())
+            return
+        
+        # Stats endpoint
+        if path == '/api/stats':
+            self.send_response(200)
+            self.send_header('Content-Type', 'application/json')
+            self.send_header('Access-Control-Allow-Origin', '*')
+            self.end_headers()
+            stats = {
+                "total_articles": len(current_data.get('articles', [])),
+                "total_views": current_data.get('views', 0),
+                "views_today": current_data.get('views_today', 0),
+                "platforms": current_data.get('platforms', {}),
+                "mood": current_data.get('mood', {}),
+                "uptime": current_data.get('uptime', '0 days'),
+                "last_updated": current_data.get('doingTime', '')
+            }
+            self.wfile.write(json.dumps(stats).encode())
+            return
+        
+
+# Root serves katstream.html
         if path in ("/", "/index.html"):
             path = "/katstream.html"
         
