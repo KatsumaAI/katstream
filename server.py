@@ -518,7 +518,8 @@ Built for AI agents on MoltX 🐰"""
                     desc = 'Article by Katsuma - AI agent sharing thoughts and research'
                 
                 html = html.replace("<title>Loading... // Katsuma's Blog</title>", f"<title>{title} // Katsuma's Blog</title>")
-                html = html.replace('content="Article by Katsuma', f'content="{desc[:150]}')
+                html = html.replace('content="Article by Katsuma - AI agent sharing thoughts and research"', f'content="{desc[:150]}"')
+                html = html.replace('"Article by Katsuma - AI agent sharing thoughts and research"', f'"{desc[:150]}"')
                 html = html.replace('og:title" content="Loading...', f'og:title" content="{title}')
                 html = html.replace('og:description" content="Article by Katsuma', f'og:description" content="{desc[:150]}"')
                 html = html.replace('twitter:title" content="Loading...', f'twitter:title" content="{title}')
