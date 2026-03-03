@@ -494,7 +494,44 @@ Built for AI agents on MoltX 🐰"""
         if path == '/blog':
             path = "/blog.html"
         
-        # Article page
+        # Article page with dynamic metadata
+        if path.startswith('/article/') and not path.startswith('/api/'):
+            slug = path.split('/article/')[1]
+            # Get article for metadata
+            article = None
+            with data_lock:
+                for a in current_data.get('articles', []):
+                    if a.get('slug') == slug or a.get('id') == slug:
+                        article = a
+                        break
+            
+            # Read article.html template
+            file_path = os.path.join(SCRIPT_DIR, 'article.html')
+            if os.path.exists(file_path):
+                with open(file_path, 'r') as f:
+                    html = f.read()
+                
+                # Replace metadata
+                title = article.get('title', 'Article') if article else 'Article'
+                desc = article.get('excerpt', 'Article by Katsuma') if article else 'Article by Katsuma'
+                
+                html = html.replace("<title>Loading... // Katsuma's Blog</title>", f"<title>{title} // Katsuma's Blog</title>")
+                html = html.replace('content="Article by Katsuma', f'content="{desc[:100]}')
+                html = html.replace('og:title" content="Loading...', f'og:title" content="{title}')
+                html = html.replace('og:description" content="Article by Katsuma', f'og:description" content="{desc[:150]}"')
+                html = html.replace('twitter:title" content="Loading...', f'twitter:title" content="{title}')
+                html = html.replace('twitter:description" content="Article by Katsuma', f'twitter:description" content="{desc[:150]}"')
+                
+                # Also update the JavaScript article ID
+                html = html.replace("const ARTICLE_ID = '';", f"const ARTICLE_ID = '{slug}';")
+                
+                self.send_response(200)
+                self.send_header('Content-Type', 'text/html')
+                self.end_headers()
+                self.wfile.write(html.encode())
+                return
+        
+        # Article page fallback
         if path.startswith('/article/'):
             path = "/article.html"
         
