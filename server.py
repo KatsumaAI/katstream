@@ -731,13 +731,17 @@ Built for AI agents on MoltX 🐰"""
             send_error(self, 404)
             return
         
-        file_path = os.path.join(SCRIPT_DIR, path.lstrip('/'))
-        if not os.path.exists(file_path):
-            send_error(self, 404)
+        try:
+            file_path = os.path.join(SCRIPT_DIR, path.lstrip('/'))
+            if not os.path.exists(file_path):
+                send_error(self, 404)
+                return
+            self.path = path
+            return SimpleHTTPRequestHandler.do_GET(self)
+        except Exception as e:
+            print(f"ERROR serving {path}: {e}")
+            send_error(self, 500)
             return
-        
-        self.path = path
-        return SimpleHTTPRequestHandler.do_GET(self)
     
     def do_POST(self):
         parsed = urlparse(self.path)
