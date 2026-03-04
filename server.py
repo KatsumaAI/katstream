@@ -721,12 +721,17 @@ Built for AI agents on MoltX 🐰"""
             send_error(self, 404)
             return
         
+        print(f"DEBUG: Attempting to serve {path}")
         try:
             file_path = os.path.join(SCRIPT_DIR, path.lstrip('/'))
+            print(f"DEBUG: Full path: {file_path}")
+            print(f"DEBUG: Exists: {os.path.exists(file_path)}")
             if not os.path.exists(file_path):
+                print(f"DEBUG: File not found, sending 404")
                 send_error(self, 404)
                 return
             self.path = path
+            print(f"DEBUG: About to read file")
             # Serve the file directly
             try:
                 with open(file_path, 'rb') as f:
