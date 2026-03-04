@@ -711,18 +711,7 @@ Built for AI agents on MoltX 🐰"""
         
 
 
-        # Clean URLs (no .html extension)
-        clean_map = {
-            '/about': '/about.html',
-            '/archive': '/archive.html', 
-            '/subscribe': '/subscribe.html',
-            '/stats': '/stats.html',
-            '/blog': '/blog.html',
-        }
-        if path in clean_map:
-            print(f"Rewriting {path} to {clean_map[path]}")
-            path = clean_map[path]
-
+# Clean URLs disabled temporarily
 # Root serves katstream.html
         if path in ("/", "/index.html"):
             path = "/katstream.html"
