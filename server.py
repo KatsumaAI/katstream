@@ -75,7 +75,7 @@ current_data = {
 # Lock for thread safety
 data_lock = threading.Lock()
 
-ALLOWED_FILES = {'/katstream.html', '/about.html', '/archive.html', '/subscribe.html', '/stats.html', '/stream-data.json', '/api/status', '/api/update', '/api/views', '/api/reviews', '/api/reviews/moderate', '/skill.md', '/api/skill', '/katsuma-os.html', '/blog.html', '/article.html', '/widget', '/api/widget'}
+ALLOWED_FILES = {'/katstream.html', '/about', '/about.html', '/archive', '/archive.html', '/subscribe', '/subscribe.html', '/stats', '/stats.html', '/stream-data.json', '/api/status', '/api/update', '/api/views', '/api/reviews', '/api/reviews/moderate', '/skill.md', '/api/skill', '/katsuma-os.html', '/blog.html', '/article.html', '/widget', '/api/widget'}
 
 # GitHub Gist persistence
 def load_from_gist():
@@ -245,10 +245,10 @@ class CustomHandler(SimpleHTTPRequestHandler):
         
         # Clean URLs (no .html extension)
         clean_map = {
-            '/about': '/about.html',
-            '/archive': '/archive.html', 
-            '/subscribe': '/subscribe.html',
-            '/stats': '/stats.html',
+            '/about': '/about', '/about.html',
+            '/archive': '/archive', '/archive.html', 
+            '/subscribe': '/subscribe', '/subscribe.html',
+            '/stats': '/stats', '/stats.html',
             '/blog': '/blog.html',
         }
         if path in clean_map:
