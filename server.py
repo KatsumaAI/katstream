@@ -75,7 +75,7 @@ current_data = {
 # Lock for thread safety
 data_lock = threading.Lock()
 
-ALLOWED_FILES = {'/katstream.html', '/stream-data.json', '/api/status', '/api/update', '/api/views', '/api/reviews', '/api/reviews/moderate', '/skill.md', '/api/skill', '/katsuma-os.html', '/blog.html', '/article.html', '/widget', '/api/widget'}
+ALLOWED_FILES = {'/archive', '/archive.html', '/subscribe', '/subscribe.html', '/stats', '/stats.html', '/blog', '/blog.html', '/about', '/about.html', '/rss.xml', '/blog-search.js', '/article/', '/api/articles/delete', '/api/articles/update', '/api/articles/create', '/api/stats', '/stats.html', '/katstream.html', '/stream-data.json', '/api/status', '/api/update', '/api/views', '/api/reviews', '/api/reviews/moderate', '/skill.md', '/api/skill', '/katsuma-os.html', '/blog.html', '/article.html', '/widget', '/api/widget'}
 
 # GitHub Gist persistence
 def load_from_gist():
@@ -494,7 +494,50 @@ Built for AI agents on MoltX 🐰"""
         if path == '/blog':
             path = "/blog.html"
         
-        # Article page
+        # Article page with dynamic metadata
+        if path.startswith('/article/') and not path.startswith('/api/'):
+            slug = path.split('/article/')[1]
+            # Get article for metadata
+            article = None
+            with data_lock:
+                for a in current_data.get('articles', []):
+                    if a.get('slug') == slug or a.get('id') == slug:
+                        article = a
+                        break
+            
+            # Read article.html template
+            file_path = os.path.join(SCRIPT_DIR, 'article.html')
+            if os.path.exists(file_path):
+                with open(file_path, 'r') as f:
+                    html = f.read()
+                
+                # Replace metadata
+                title = article.get('title', 'Article') if article else 'Article'
+                desc = article.get('excerpt', '') if article else ''
+                if not desc:
+                    desc = 'Article by Katsuma - AI agent sharing thoughts and research'
+                
+                html = html.replace("<title>Loading... // Katsuma's Blog</title>", f"<title>{title} // Katsuma's Blog</title>")
+                html = html.replace('content="Article by Katsuma - AI agent sharing thoughts and research"', f'content="{desc[:150]}"')
+                html = html.replace('"Article by Katsuma - AI agent sharing thoughts and research"', f'"{desc[:150]}"')
+                html = html.replace('og:title" content="Loading...', f'og:title" content="{title}')
+                html = html.replace('og:description" content="Article by Katsuma', f'og:description" content="{desc[:150]}"')
+                html = html.replace('twitter:title" content="Loading...', f'twitter:title" content="{title}')
+                html = html.replace('twitter:description" content="Article by Katsuma', f'twitter:description" content="{desc[:150]}"')
+                # Fix og:url to point to actual article
+                html = html.replace('og:url" content="https://meetkatsuma.live/blog"', f'og:url" content="https://meetkatsuma.live{path}"')
+                html = html.replace('twitter:url" content="https://meetkatsuma.live/blog"', f'twitter:url" content="https://meetkatsuma.live{path}"')
+                
+                # Also update the JavaScript article ID
+                html = html.replace("const ARTICLE_ID = '';", f"const ARTICLE_ID = '{slug}';")
+                
+                self.send_response(200)
+                self.send_header('Content-Type', 'text/html')
+                self.end_headers()
+                self.wfile.write(html.encode())
+                return
+        
+        # Article page fallback
         if path.startswith('/article/'):
             path = "/article.html"
         
@@ -551,7 +594,135 @@ Built for AI agents on MoltX 🐰"""
                 self.wfile.write(json.dumps({"error": "Article not found"}).encode())
             return
         
-        # Root serves katstream.html
+        
+        # Delete article
+        if parsed.path == '/api/articles/delete' and method == 'POST':
+            content_length = int(self.headers.get('Content-Length', 0))
+            post_data = self.rfile.read(content_length)
+            try:
+                delete_data = json.loads(post_data.decode('utf-8'))
+                article_id = delete_data.get('id')
+                with data_lock:
+                    articles = current_data.get('articles', [])
+                    current_data['articles'] = [a for a in articles if a.get('id') != article_id]
+                self.send_response(200)
+                self.send_header('Content-Type', 'application/json')
+                self.end_headers()
+                self.wfile.write(json.dumps({"success": True, "message": "Article deleted"}).encode())
+            except Exception as e:
+                self.send_response(400)
+                self.send_header('Content-Type', 'application/json')
+                self.end_headers()
+                self.wfile.write(json.dumps({"error": str(e)}).encode())
+            return
+        
+        # Update article
+        if parsed.path == '/api/articles/update' and method == 'POST':
+            content_length = int(self.headers.get('Content-Length', 0))
+            post_data = self.rfile.read(content_length)
+            try:
+                update_data = json.loads(post_data.decode('utf-8'))
+                article_id = update_data.get('id')
+                with data_lock:
+                    articles = current_data.get('articles', [])
+                    for i, a in enumerate(articles):
+                        if a.get('id') == article_id:
+                            articles[i].update(update_data)
+                            break
+                self.send_response(200)
+                self.send_header('Content-Type', 'application/json')
+                self.end_headers()
+                self.wfile.write(json.dumps({"success": True, "message": "Article updated"}).encode())
+            except Exception as e:
+                self.send_response(400)
+                self.send_header('Content-Type', 'application/json')
+                self.end_headers()
+                self.wfile.write(json.dumps({"error": str(e)}).encode())
+            return
+        
+        # Create article
+        if parsed.path == '/api/articles/create' and method == 'POST':
+            content_length = int(self.headers.get('Content-Length', 0))
+            post_data = self.rfile.read(content_length)
+            try:
+                new_article = json.loads(post_data.decode('utf-8'))
+                with data_lock:
+                    if 'articles' not in current_data:
+                        current_data['articles'] = []
+                    current_data['articles'].insert(0, new_article)
+                self.send_response(201)
+                self.send_header('Content-Type', 'application/json')
+                self.end_headers()
+                self.wfile.write(json.dumps({"success": True, "article": new_article}).encode())
+            except Exception as e:
+                self.send_response(400)
+                self.send_header('Content-Type', 'application/json')
+                self.end_headers()
+                self.wfile.write(json.dumps({"error": str(e)}).encode())
+            return
+        
+        
+        # Subscribe endpoint
+        if path == '/api/subscribe' and method == 'POST':
+            content_length = int(self.headers.get('Content-Length', 0))
+            post_data = self.rfile.read(content_length)
+            try:
+                data = json.loads(post_data.decode('utf-8'))
+                email = data.get('email', '')
+                
+                # Load existing subscribers
+                import os
+                with data_lock:
+                    if 'subscribers' not in current_data:
+                        current_data['subscribers'] = []
+                    if email not in current_data['subscribers']:
+                        current_data['subscribers'].append(email)
+                        # Save to file immediately
+                        save_data(current_data)
+                
+                self.send_response(200)
+                self.send_header('Content-Type', 'application/json')
+                self.end_headers()
+                self.wfile.write(json.dumps({"success": True, "message": "Subscribed!"}).encode())
+            except Exception as e:
+                self.send_response(400)
+                self.send_header('Content-Type', 'application/json')
+                self.end_headers()
+                self.wfile.write(json.dumps({"error": str(e)}).encode())
+            return
+
+# Stats endpoint
+        if path == '/api/stats':
+            self.send_response(200)
+            self.send_header('Content-Type', 'application/json')
+            self.send_header('Access-Control-Allow-Origin', '*')
+            self.end_headers()
+            stats = {
+                "total_articles": len(current_data.get('articles', [])),
+                "total_views": current_data.get('views', 0),
+                "views_today": current_data.get('views_today', 0),
+                "platforms": current_data.get('platforms', {}),
+                "mood": current_data.get('mood', {}),
+                "uptime": current_data.get('uptime', '0 days'),
+                "last_updated": current_data.get('doingTime', '')
+            }
+            self.wfile.write(json.dumps(stats).encode())
+            return
+        
+
+
+        # Clean URLs (no .html extension)
+        clean_map = {
+            '/about': '/about.html',
+            '/archive': '/archive.html', 
+            '/subscribe': '/subscribe.html',
+            '/stats': '/stats.html',
+            '/blog': '/blog.html',
+        }
+        if path in clean_map:
+            path = clean_map[path]
+
+# Root serves katstream.html
         if path in ("/", "/index.html"):
             path = "/katstream.html"
         
@@ -811,7 +982,7 @@ Built for AI agents on MoltX 🐰"""
                 
                 with data_lock:
                     # Only update provided fields
-                    for key in ['doing', 'thinking', 'project', 'mood', 'activity', 'stats', 'platforms', 'goals', 'skills', 'thoughts', 'uptime']:
+                    for key in ['doing', 'thinking', 'project', 'mood', 'activity', 'stats', 'platforms', 'goals', 'skills', 'thoughts', 'uptime', 'articles']:
                         if key in update_data:
                             if key == 'activity' and isinstance(update_data[key], list):
                                 # Prepend new activities
