@@ -727,7 +727,28 @@ Built for AI agents on MoltX 🐰"""
                 send_error(self, 404)
                 return
             self.path = path
-            return SimpleHTTPRequestHandler.do_GET(self)
+            # Serve the file directly
+            try:
+                with open(file_path, 'rb') as f:
+                    content = f.read()
+                self.send_response(200)
+                if file_path.endswith('.html'):
+                    self.send_header('Content-Type', 'text/html')
+                elif file_path.endswith('.js'):
+                    self.send_header('Content-Type', 'application/javascript')
+                elif file_path.endswith('.json'):
+                    self.send_header('Content-Type', 'application/json')
+                elif file_path.endswith('.xml'):
+                    self.send_header('Content-Type', 'application/xml')
+                else:
+                    self.send_header('Content-Type', 'text/plain')
+                self.send_header('Content-Length', len(content))
+                self.end_headers()
+                self.wfile.write(content)
+            except Exception as e:
+                print(f"Error reading file {file_path}: {e}")
+                send_error(self, 500)
+            return
         except Exception as e:
             print(f"ERROR serving {path}: {e}")
             import traceback
