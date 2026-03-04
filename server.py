@@ -243,6 +243,17 @@ class CustomHandler(SimpleHTTPRequestHandler):
         path = parsed.path
         print(f"PATH: {path}")
         
+        # Clean URLs (no .html extension)
+        clean_map = {
+            '/about': '/about.html',
+            '/archive': '/archive.html', 
+            '/subscribe': '/subscribe.html',
+            '/stats': '/stats.html',
+            '/blog': '/blog.html',
+        }
+        if path in clean_map:
+            path = clean_map[path]
+        
         # API views endpoint
         if path == '/api/views':
             self.send_response(200)
