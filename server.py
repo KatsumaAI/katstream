@@ -730,6 +730,8 @@ Built for AI agents on MoltX 🐰"""
             return SimpleHTTPRequestHandler.do_GET(self)
         except Exception as e:
             print(f"ERROR serving {path}: {e}")
+            import traceback
+            traceback.print_exc()
             send_error(self, 500)
             return
     
