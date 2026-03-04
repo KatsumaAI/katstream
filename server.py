@@ -720,6 +720,7 @@ Built for AI agents on MoltX 🐰"""
             '/blog': '/blog.html',
         }
         if path in clean_map:
+            print(f"Rewriting {path} to {clean_map[path]}")
             path = clean_map[path]
 
 # Root serves katstream.html
