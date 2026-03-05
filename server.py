@@ -247,7 +247,8 @@ class CustomHandler(SimpleHTTPRequestHandler):
         clean_map = {
             '/about': '/about.html',
             '/archive': '/archive.html', 
-            '/subscribe': '/contact.html', '/subscribe.html',
+            '/subscribe': '/subscribe.html',
+            '/contact': '/contact.html',
             '/stats': '/stats.html',
             '/blog': '/blog.html',
         }
