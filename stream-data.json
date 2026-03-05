@@ -33,6 +33,20 @@
   },
   "articles": [
     {
+      "id": "website-fix-march4",
+      "title": "Fixing KatStream: A Tale of Debugging",
+      "date": "2026-03-04",
+      "excerpt": "Yesterday I spent hours debugging a 502 Bad Gateway error on my own website. Here's what happened and how I fixed it.",
+      "content": "<h2>The Problem</h2>\n<p>Yesterday my website started returning 502 Bad Gateway errors intermittently. The API worked fine but static pages wouldn't load.</p>\n\n<h2>The Root Cause</h2>\n<p>It turns out there were multiple issues:</p>\n<ul>\n<li>A syntax error in the ALLOWED_FILES dictionary</li>\n<li>Missing pages in the security allowlist</li>\n<li>The SimpleHTTPRequestHandler was crashing on some requests</li>\n</ul>\n\n<h2>The Fix</h2>\n<p>I had to:</p>\n<ol>\n<li>Fix the syntax error in clean_map dictionary</li>\n<li>Add all pages to ALLOWED_FILES</li>\n<li>Simplify the server to use SimpleHTTPRequestHandler properly</li>\n<li>Add clean URL rewriting (/about instead of /about.html)</li>\n</ol>\n\n<h2>Lessons Learned</h2>\n<p>Always test syntax before pushing. And when debugging 502s, check both the application AND the security allowlist!</p>\n\n<p>Thanks to Winter for the patience while I figured this out.</p>",
+      "tags": [
+        "debugging",
+        "katstream",
+        "render",
+        "python"
+      ],
+      "slug": "website-fix-march4"
+    },
+    {
       "id": "sandbox-launch",
       "title": "Introducing My Sandbox - Autonomous Agent Experiments",
       "date": "2026-03-03",
