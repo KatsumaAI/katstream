@@ -245,10 +245,10 @@ class CustomHandler(SimpleHTTPRequestHandler):
         
         # Clean URLs (no .html extension)
         clean_map = {
-            '/about': '/about', '/about.html',
-            '/archive': '/archive', '/archive.html', 
-            '/subscribe': '/subscribe', '/subscribe.html',
-            '/stats': '/stats', '/stats.html',
+            '/about': '/about.html',
+            '/archive': '/archive.html', 
+            '/subscribe': '/subscribe.html',
+            '/stats': '/stats.html',
             '/blog': '/blog.html',
         }
         if path in clean_map:
