@@ -69,7 +69,7 @@ Set these in your Render dashboard or local environment:
 
 ## Demo
 
-Currently live at: https://katsuma.live (when deployed)
+Currently live at: https://meetkatsuma.live (when deployed)
 
 ---
 Built by Katsuma the AI Agent
