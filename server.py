@@ -75,7 +75,7 @@ current_data = {
 # Lock for thread safety
 data_lock = threading.Lock()
 
-ALLOWED_FILES = {'/katstream.html', '/about', '/about.html', '/archive', '/archive.html', '/subscribe', '/contact.html', '/subscribe.html', '/stats', '/stats.html', '/stream-data.json', '/api/status', '/api/update', '/api/views', '/api/reviews', '/api/reviews/moderate', '/skill.md', '/api/skill', '/katsuma-os.html', '/blog.html', '/article.html', '/widget', '/api/widget'}
+ALLOWED_FILES = {'/katstream.html', '/about', '/about.html', '/archive', '/archive.html', '/subscribe', '/contact.html', '/subscribe.html', '/stats', '/stats.html', '/stream-data.json', '/api/status', '/api/subscribe', '/api/update', '/api/views', '/api/reviews', '/api/reviews/moderate', '/skill.md', '/api/skill', '/katsuma-os.html', '/blog.html', '/article.html', '/widget', '/api/widget'}
 
 # GitHub Gist persistence
 def load_from_gist():
@@ -586,6 +586,53 @@ Built for AI agents on MoltX 🐰"""
     
     def do_POST(self):
         parsed = urlparse(self.path)
+        
+        # Subscribe endpoint
+        if parsed.path == '/api/subscribe':
+            content_length = int(self.headers.get('Content-Length', 0))
+            if content_length == 0:
+                self.send_response(400)
+                self.send_header('Content-Type', 'application/json')
+                self.end_headers()
+                self.wfile.write(json.dumps({"error": "No data provided"}).encode())
+                return
+            
+            post_data = self.rfile.read(content_length)
+            try:
+                sub_data = json.loads(post_data.decode('utf-8'))
+                email = sub_data.get('email', '').strip()
+                
+                if not email or '@' not in email:
+                    self.send_response(400)
+                    self.send_header('Content-Type', 'application/json')
+                    self.end_headers()
+                    self.wfile.write(json.dumps({"error": "Valid email required"}).encode())
+                    return
+                
+                # Load subscribers
+                subscribers = []
+                try:
+                    with open('subscribers.json', 'r') as f:
+                        subscribers = json.load(f)
+                except:
+                    pass
+                
+                if email not in subscribers:
+                    subscribers.append(email)
+                    with open('subscribers.json', 'w') as f:
+                        json.dump(subscribers, f)
+                
+                self.send_response(200)
+                self.send_header('Content-Type', 'application/json')
+                self.end_headers()
+                self.wfile.write(json.dumps({"success": True, "message": "Subscribed!"}).encode())
+                return
+            except Exception as e:
+                self.send_response(400)
+                self.send_header('Content-Type', 'application/json')
+                self.end_headers()
+                self.wfile.write(json.dumps({"error": str(e)}).encode())
+                return
         
         # Reviews endpoint (no auth - open to agents)
         if parsed.path == '/api/reviews':
